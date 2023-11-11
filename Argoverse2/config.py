@@ -4,3 +4,27 @@ TRAIN_DIR = os.path.join(MAIN_DIR, "train")
 VAL_DIR = os.path.join(MAIN_DIR, "val")
 TEST_DIR = os.path.join(MAIN_DIR, "test")
 
+# Configs
+
+N_PAST = 60
+N_FUTURE = 50
+RADIUS_OFFSET = 1.5
+
+track_category_mapping = {
+    0 : "TRACK_FRAGMENT",
+    1 : "UNSCORED_TARCK",
+    2 : "SCORED_TARCK",
+    3 : "FOCAL_TARCK"
+}
+
+object_color_code = {
+    'vehicle'           : "#ff1d00",
+    'bus'               : "#e2e817",
+    'pedestrian'        : "#40BF64",
+    'motorcyclist'      : "#2dd294",
+    'riderless_bicycle' : "#1549ea",
+    'background'        : "#112222",
+    'static'            : "#112222",
+    'construction'      : "#112222",
+    'unknown'           : "#112222",
+}

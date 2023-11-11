@@ -1,5 +1,5 @@
 from config import *
-from utils import normalize
+from utils import normalize, get_interpolated_xy
 
 
 import os
@@ -48,7 +48,7 @@ def extract_agent_features(loader):
   radius = np.linalg.norm(fl_points[1]-fl_points[0])
 
   cur_df['displacement'] = cur_df.apply(lambda x : np.linalg.norm((x['position_x'] - center[0], x['position_y'] - center[1])), axis=1)
-  cur_df['is_candidate'] = (cur_df['displacement'] <= (1.5*radius)) & (cur_df['track_id']!=track_id_)
+  cur_df['is_candidate'] = (cur_df['displacement'] <= (RADIUS_OFFSET*radius)) & (cur_df['track_id']!=track_id_)
   candidate_ids = cur_df.loc[cur_df['is_candidate'], 'track_id'].values
   
   gt = agent_df.loc[agent_df['timestep']>=N_PAST, ['position_x', 'position_y']].values
@@ -66,6 +66,42 @@ def extract_agent_features(loader):
 
   return data 
 
+
+def extract_obj_features(df, focal_track_id):
+
+  norm_vec = df.loc[(df['track_id']==focal_track_id) & (df['timestep']==N_PAST), ['position_x', 'position_y']].values.reshape(-1)
+  obj_track_ids = df.loc[df['track_id']!=focal_track_id, 'track_id'].unique()
+  
+  XYTs = np.empty((0, 5))
+  object_types = np.empty((0, 1))
+  mask_tovectors = []
+  end = 0
+
+  for t_id in obj_track_ids: 
+    obj_df = df[df['track_id']==t_id]
+    t = obj_df['timestep']
+    yx = obj_df['position_x']
+    yy = obj_df['position_y']
+
+    yx_, yy_ = get_interpolated_xy(t, yx, yy)
+    yx_norm = normalize(yx_, norm_vec[0]).reshape(-1, 1)
+    yy_norm = normalize(yy_, norm_vec[1]).reshape(-1, 1)
+    
+    timesteps = np.arange(t.min(), t.max()+1)
+    object_type = obj_df['object_type'].iloc[0]
+
+    XYTs = np.vstack((XYTs, np.hstack((yx_.reshape(-1, 1), yy_.reshape(-1, 1), yx_norm, yy_norm, timesteps.reshape(-1, 1)))))
+    mask_tovectors.append(slice(end, end+len(yx_)))  
+    end += len(XYTs)
+
+  data = {
+      'XYTs' : XYTs, 
+      'object_type' : object_type, 
+      'mask_tovectors' : mask_tovectors
+  }
+  return data
+
+
 def main():
     args = argparser()
     DATA_DIR = args.data_dir
@@ -79,8 +115,11 @@ def main():
     for scene in tqdm(SCENE_DIRS): 
         file_name = "scenario_" + scene.split('/')[-1] + ".parquet"
         loader = ss.load_argoverse_scenario_parquet(file_name)
-        data = extract_agent_features(loader)
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1]), **data)
+        agent_data = extract_agent_features(loader)
+        obj_data = extract_obj_features(loader.df, loader.focal_track_id)
+
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_agent"), **agent_data)
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj"), **obj_data)
 
 if __name__ == "__main__":
     main()
