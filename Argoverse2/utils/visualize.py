@@ -4,17 +4,11 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from scipy.interpolate import Rbf
-from scipy.interpolate import UnivariateSpline
-
 import plotly.graph_objects as go
 # =============================================================================
 
-def normalize(vector, point): 
-  return vector - point
 
-
-def draw_circle(fig, ax, center, radius): 
+def draw_circle(fig, ax, center, radius):
 
   circle = plt.Circle(center, radius, edgecolor='k', facecolor='none')
 
@@ -90,29 +84,3 @@ def plot_track(df: pd.DataFrame, track_id: str, colormap='RdBu'):
 
   fig = go.Figure(data=[trace], layout=layout)
   fig.show()
-
-
-def get_interpolated_xy(timesteps, x_coord, y_coord): 
-  n_ts = (timesteps.max() - timesteps.min() + 1)
-  x = timesteps
-  yx = x_coord
-  yy = y_coord
-  if n_ts > len(x):
-    interp_func_X = UnivariateSpline(x, yx)
-    interp_func_Y = UnivariateSpline(x, yy)
-
-    yx_ = []
-    yy_ = []
-    it = 0
-    for i in range(x.min(), x.max()+1): 
-      if i not in x.values:
-        yx_.append(interp_func_X(i))
-        yy_.append(interp_func_Y(i))
-      else: 
-        yx_.append(yx.values[it])
-        yy_.append(yy.values[it])
-        it+=1
-  else : 
-    return yx, yy 
-  return np.array(yx_), np.array(yy_)
-

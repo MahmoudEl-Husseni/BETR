@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 
-def normalize(vector, point): 
+def normalize(vector, point):
   return vector - point
 
 def get_interpolated_xy(timesteps, x_coord, y_coord):
@@ -35,7 +35,7 @@ def Angle_Distance_from_agent(df, loader):
   t_ids = df.loc[df['track_id']!=track_id, 'track_id'].unique()
   df['displacement_from_agent'] = np.zeros(len(df))
   df['angle_to_agent'] = np.zeros(len(df))
-  
+
   for id in t_ids:
     dd = df.loc[df['track_id']==id]
     t = dd['timestep'].values
@@ -60,7 +60,7 @@ def n_candidates(df, loader, distance):
 def calc_direction(xyz):
   direction = []
   lastx, lasty, lastz = xyz[0]
-  for d in xyz[1:]: 
+  for d in xyz[1:]:
     x, y, z = d
     dir = (y - lasty) / (x - lastx)
     lastx, lasty, lastz = [x, y, z]
@@ -68,3 +68,10 @@ def calc_direction(xyz):
 
   direction.append(dir)
   return np.array(direction)
+
+
+def get_avg_vectors(data, col, n_frames_per_vector, n_past=N_PAST):
+  start_x = agent_data[col][:N_PAST][:-n_frames_per_vector:n_frames_per_vector]
+  end_x = agent_data[col][:N_PAST][n_frames_per_vector::n_frames_per_vector]
+  x_avg = (start_x + end_x) / 2.0
+  return x_avg
