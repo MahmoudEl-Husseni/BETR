@@ -270,6 +270,26 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE):
   
   return vectors, mask
 
+
+def vectorize_lane(lane_data, dl=LANE_DL):
+  vectors = np.empty((0, 10))
+  mask = []
+  for i in range(len(lane_data['ID'])): 
+    xyz_s = lane_data['XYZ'][i][:-1]
+    xyz_e = lane_data['XYZ'][i][1:]
+
+    is_inter = np.ones(len(xyz_s)).reshape(-1, 1) * lane_data['IS_INTER'][i]
+    dir = lane_data['DIRECTION'][i].reshape(-1, 1)[:-1]
+    typ = np.array([lane_data['TYP'][0].value for i in range(len(xyz_s))]).reshape(-1, 1)
+
+    id = np.ones(len(xyz_s)).reshape(-1, 1) * i
+
+    _vectors = np.hstack([xyz_s, xyz_e, is_inter, dir, typ, id])
+    vectors = np.vstack([vectors, _vectors])
+    mask.append(slice(len(vectors)-len(_vectors), len(vectors)))
+  return vectors, mask
+
+
 # ============================== main ==============================
 def main():
     args = argparser()
@@ -292,9 +312,24 @@ def main():
         agent_data, center, radius = extract_agent_features(loader)
         obj_data = extract_obj_features(loader.df, loader.focal_track_id)
         lane_data = extract_lane_features(avm, center, radius)
+
+
+        # Vectorize data
+        agent_vectors = vectorize_agent(agent_data)
+        obj_vectors, obj_mask = vectorize_obj(obj_data)
+        lane_vectors, lane_mask = vectorize_lane(lane_data)
+
+        obj_mask = {'mask' : obj_mask}
+        lane_mask = {'mask' : lane_mask}
         
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_agent"), **agent_data)
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj"), **obj_data)
+        # Save masks
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj_mask"), **obj_mask)
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_lane_mask"), **lane_mask)
+
+        # Save vectors
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_agent_vectors"), agent_vectors)
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj_vectors"), obj_vectors)
+        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_lane_vectors"), lane_vectors)
 
 if __name__ == "__main__":
     main()
