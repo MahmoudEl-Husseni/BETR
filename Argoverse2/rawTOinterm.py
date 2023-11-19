@@ -1,8 +1,7 @@
 from config import *
 from utils.geometry import calc_direction, n_candidates, Angle_Distance_from_agent, get_avg_vectors
 
-from Argoverse2.utils.visualize import normalize, get_interpolated_xy
-
+from utils.geometry import normalize, get_interpolated_xy
 
 import os
 import sys
@@ -10,10 +9,14 @@ import argparse
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import multiprocessing as mp
 from pathlib import Path
 
 
-sys.path.append("/content/av2-api/src")
+sys.path.append("av2-api/src")
+import warnings
+warnings.simplefilter('ignore')
+
 
 from av2.datasets.motion_forecasting import scenario_serialization as ss
 from av2.map.map_api import ArgoverseStaticMap
@@ -289,47 +292,68 @@ def vectorize_lane(lane_data, dl=LANE_DL):
     mask.append(slice(len(vectors)-len(_vectors), len(vectors)))
   return vectors, mask
 
+def process_scene(scene, save_dir, typ):
+    os.mkdir(os.path.join(save_dir, scene.split('/')[-1]))
+    file_name = scene + "/scenario_" + scene.split('/')[-1] + ".parquet"
+    loader = ss.load_argoverse_scenario_parquet(file_name)
+    
+    df = ss._convert_tracks_to_tabular_format(loader.tracks)
+    
+    log_map_dirpath = Path(scene)
+    avm = ArgoverseStaticMap.from_map_dir(log_map_dirpath=log_map_dirpath, build_raster=False)
 
+    agent_data, center, radius = extract_agent_features(loader)
+    obj_data = extract_obj_features(df, loader)
+    lane_data = extract_lane_features(avm, center, radius)
+    gt = agent_data['gt']
+    gt_normalized = agent_data['gt_normalized']
+
+    # Vectorize data
+    agent_vectors = vectorize_agent(agent_data)
+    obj_vectors, obj_mask = vectorize_obj(obj_data)
+    lane_vectors, lane_mask = vectorize_lane(lane_data)
+
+    obj_mask = {'mask' : obj_mask}
+    lane_mask = {'mask' : lane_mask}
+    
+    # Save masks
+    np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_obj_mask"), **obj_mask)
+    np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_lane_mask"), **lane_mask)
+
+    # Save vectors
+    np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_agent_vectors"), agent_vectors)
+    np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_obj_vectors"), obj_vectors)
+    np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_lane_vectors"), lane_vectors)
+
+    if typ!='test':
+        # Save ground truth
+        gt = {'gt' : gt}
+        gt_normalized = {'gt_normalized' : gt_normalized}
+        np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_gt"), **gt)
+        np.savez(os.path.join(save_dir, scene.split('/')[-1], scene.split('/')[-1] + "_gt_normalized"), **gt_normalized)
+       
 # ============================== main ==============================
 def main():
     args = argparser()
     DATA_DIR = args.data_dir
-    SAVE_DIR = os.path.join(args.save_dir, args.type)
-    SCENE_DIRS = [os.path.join(DATA_DIR, "train")]
+    SAVE_DIR = args.save_dir
+    SCENE_DIRS = [os.path.join(DATA_DIR, i) for i in os.listdir(DATA_DIR)]
 
     # Create save directory
     if not os.path.exists(SAVE_DIR):
         os.makedirs(SAVE_DIR)
+    else : 
+       finished_scenes = [i.split('/')[-1] for i in os.listdir(SAVE_DIR)]
 
-    for scene in tqdm(SCENE_DIRS): 
-        file_name = "scenario_" + scene.split('/')[-1] + ".parquet"
-        loader = ss.load_argoverse_scenario_parquet(file_name)
-        
-        log_map_dirpath = Path(scene)
-        avm = ArgoverseStaticMap.from_map_dir(log_map_dirpath=log_map_dirpath, build_raster=False)
-
-
-        agent_data, center, radius = extract_agent_features(loader)
-        obj_data = extract_obj_features(loader.df, loader.focal_track_id)
-        lane_data = extract_lane_features(avm, center, radius)
-
-
-        # Vectorize data
-        agent_vectors = vectorize_agent(agent_data)
-        obj_vectors, obj_mask = vectorize_obj(obj_data)
-        lane_vectors, lane_mask = vectorize_lane(lane_data)
-
-        obj_mask = {'mask' : obj_mask}
-        lane_mask = {'mask' : lane_mask}
-        
-        # Save masks
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj_mask"), **obj_mask)
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_lane_mask"), **lane_mask)
-
-        # Save vectors
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_agent_vectors"), agent_vectors)
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_obj_vectors"), obj_vectors)
-        np.savez(os.path.join(SAVE_DIR, scene.split('/')[-1] + "_lane_vectors"), lane_vectors)
-
+    processes = []
+    for scene in SCENE_DIRS:
+        if scene.split('/')[-1] in finished_scenes: 
+            continue
+        p = mp.Process(target=process_scene, args=(scene, SAVE_DIR, args.type))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
+    
 if __name__ == "__main__":
     main()

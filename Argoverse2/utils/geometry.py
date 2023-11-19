@@ -1,4 +1,5 @@
 import numpy as np
+from config import *
 from scipy.interpolate import UnivariateSpline
 
 def normalize(vector, point):
@@ -71,7 +72,7 @@ def calc_direction(xyz):
 
 
 def get_avg_vectors(data, col, n_frames_per_vector, n_past=N_PAST):
-  start_x = agent_data[col][:N_PAST][:-n_frames_per_vector:n_frames_per_vector]
-  end_x = agent_data[col][:N_PAST][n_frames_per_vector::n_frames_per_vector]
+  start_x = data[col][:N_PAST][:-n_frames_per_vector:n_frames_per_vector]
+  end_x = data[col][:N_PAST][n_frames_per_vector::n_frames_per_vector]
   x_avg = (start_x + end_x) / 2.0
   return x_avg

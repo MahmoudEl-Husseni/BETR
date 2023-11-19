@@ -9,6 +9,12 @@ TEST_DIR = os.path.join(MAIN_DIR, "test")
 N_PAST = 60
 N_FUTURE = 50
 RADIUS_OFFSET = 1.5
+TRAJ_DT = 0.1
+LANE_DL = 1e13
+
+ARGO_PAST_TIME = 5
+ARGO_SAMPLE_RATE = 10
+
 
 track_category_mapping = {
     0 : "TRACK_FRAGMENT",
