@@ -1,6 +1,9 @@
-import numpy as np
 from config import *
+
+import numpy as np
+from itertools import combinations
 from scipy.interpolate import UnivariateSpline
+
 
 def normalize(vector, point):
   return vector - point
@@ -76,3 +79,11 @@ def get_avg_vectors(data, col, n_frames_per_vector, n_past=N_PAST):
   end_x = data[col][:N_PAST][n_frames_per_vector::n_frames_per_vector]
   x_avg = (start_x + end_x) / 2.0
   return x_avg
+
+def fc_graph(num_nodes): 
+  edges = np.array(list(combinations(range(num_nodes), 2)))
+  edges2 = edges[:, ::-1]
+
+  edge_index = torch.tensor(np.vstack([edges, edges2]), dtype=torch.long).t().contiguous()
+  
+  return edge_index
