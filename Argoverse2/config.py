@@ -40,6 +40,7 @@ map_object_type = {
     'vehicle'           : 0,
     'bus'               : 1,
     'bike'              : 2,
+    'cyclist' 		 : 2,
     'pedestrian'        : 2,
     'motorcyclist'      : 3,
     'riderless_bicycle' : 4,

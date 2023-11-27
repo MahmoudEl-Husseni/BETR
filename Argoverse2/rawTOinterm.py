@@ -1,7 +1,7 @@
 from config import *
 from utils.geometry import calc_direction, n_candidates, Angle_Distance_from_agent, get_avg_vectors
 
-from utils.geometry import normalize, get_interpolated_xy, get_avg, pad_obj_vectors, pad_lane_vectors
+from utils.geometry import normalize, get_interpolated_xy, get_avg_vectors, interpolate_x
 from utils.data import *
 
 import os
@@ -136,15 +136,22 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
 
     # Distance From Agent
     distance = obj_df['displacement_from_agent'].values.reshape(-1, 1)
+    distance = interpolate_x(t, distance).reshape(-1, 1)
+    
     angle = obj_df['angle_to_agent'].values.reshape(-1, 1)
-
+    angle = interpolate_x(t, angle).reshape(-1, 1)
+    
     # Heading
     heading = obj_df['heading'].values.reshape(-1, 1)
-
+    heading = interpolate_x(t, heading).reshape(-1, 1)
+    
     # velocity
     vx = obj_df['velocity_x'].values.reshape(-1, 1)
     vy = obj_df['velocity_y'].values.reshape(-1, 1)
-
+    vx, vy = get_interpolated_xy(t, vx, vy)
+    vx = vx.reshape(-1, 1)
+    vy = vy.reshape(-1, 1)
+    
     # Polyline id
     polyline_id = p_id
 
@@ -173,7 +180,7 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
       'mask_tovectors' : mask_tovectors
   }
   return data
-
+  
 
 def extract_lane_features(avm, center, radius): # Time Complexity -> O(n) (n: No. Polylines)
   polylines = avm.get_nearby_lane_segments(center, radius*RADIUS_OFFSET)
@@ -245,28 +252,29 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE, min_obj_ve
       continue
 
 
-    ts_start = obj_data['XYTs'][_mask][n_frames_per_vector::n_frames_per_vector, 4].reshape(-1, 1)
+    ts_start = obj_data['XYTs'][_mask][:-n_frames_per_vector:n_frames_per_vector, 4].reshape(-1, 1)
     ts_end = obj_data['XYTs'][_mask][n_frames_per_vector::n_frames_per_vector, 4].reshape(-1, 1)
     ts_avg = (ts_start + ts_end) / 2.0
 
-    dist_start = obj_data['DIST'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    dist_start = obj_data['DIST'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     dist_end = obj_data['DIST'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     dist_avg = (dist_start + dist_end) / 2.0
+    # print(f"Distance Shape: {dist_avg.shape}\tX Shape: {Xs.shape}")
 
-    angle_start = obj_data['ANGLE'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    angle_start = obj_data['ANGLE'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     angle_end = obj_data['ANGLE'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     angle_avg = (angle_start + angle_end) / 2.0
 
-    vx_start = obj_data['VELOCITY'][_mask, 0][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    vx_start = obj_data['VELOCITY'][_mask, 0][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     vx_end = obj_data['VELOCITY'][_mask, 0][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     vx_avg = (vx_start + vx_end) / 2.0
 
-    vy_start = obj_data['VELOCITY'][_mask, 1][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    vy_start = obj_data['VELOCITY'][_mask, 1][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     vy_end = obj_data['VELOCITY'][_mask, 1][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     vy_avg = (vy_start + vy_end) / 2.0
 
 
-    heading_start = obj_data['HEADING'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    heading_start = obj_data['HEADING'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     heading_end = obj_data['HEADING'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     heading_avg = (heading_start + heading_end) / 2.0
 
@@ -284,7 +292,7 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE, min_obj_ve
     mask.append(slice(len(vectors) - len(_vectors), len(vectors)))
 
   return vectors, mask
-
+  
 
 def vectorize_lane(lane_data, dl=LANE_DL):
   vectors = np.empty((0, 10))
@@ -309,7 +317,7 @@ def vectorize_lane(lane_data, dl=LANE_DL):
 
 def process_scene(scene, save_dir, typ):
     pref = scene.split('/')[-1]
-    os.mkdir(os.path.join(save_dir, pref), exist_ok=True)
+    os.makedirs(os.path.join(save_dir, pref), exist_ok=True)
 
     file_name = scene + "/scenario_" + pref + ".parquet"
     loader = ss.load_argoverse_scenario_parquet(file_name)
@@ -320,7 +328,7 @@ def process_scene(scene, save_dir, typ):
     avm = ArgoverseStaticMap.from_map_dir(log_map_dirpath=log_map_dirpath, build_raster=False)
 
     agent_data, center, radius = extract_agent_features(loader)
-    obj_data = extract_obj_features(df, loader)
+    obj_data = extract_obj_features(df, loader, radius)
     lane_data = extract_lane_features(avm, center, radius)
     
     gt_normalized = agent_data['gt_normalized']
@@ -346,25 +354,29 @@ def main():
     SCENE_DIRS = [os.path.join(DATA_DIR, i) for i in os.listdir(DATA_DIR)]
 
     # Create save directory
-    if not os.path.exists(SAVE_DIR):
-        os.makedirs(SAVE_DIR)
-        os.makedirs(os.path.join(SAVE_DIR, "agents"))
-        os.makedirs(os.path.join(SAVE_DIR, "obj"))
-        os.makedirs(os.path.join(SAVE_DIR, "lanes"))
+    if not os.path.exists(os.path.join(SAVE_DIR, 'agents')):
+        os.makedirs(SAVE_DIR, exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "agents"), exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "obj"), exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "lanes"), exist_ok=True)
         if args.type!='test':
           os.makedirs(os.path.join(SAVE_DIR, "gt"))
           
         finished_scenes = []
     else : 
-       finished_scenes = [i.split('/')[-1] for i in os.listdir(SAVE_DIR)]
+       finished_scenes = [i.split('/')[-1] for i in os.listdir(os.path.join(SAVE_DIR, 'agents'))]
 
     processes = []
+    
     for scene in tqdm(SCENE_DIRS):
-        if scene.split('/')[-1] in finished_scenes: 
+        if scene.split('/')[-1]+'_agent_vector.npy' in finished_scenes: 
             continue
+        
+        cnt+=1
         p = mp.Process(target=process_scene, args=(scene, SAVE_DIR, args.type))
         p.start()
         processes.append(p)
+    
     for p in processes:
         p.join()
     

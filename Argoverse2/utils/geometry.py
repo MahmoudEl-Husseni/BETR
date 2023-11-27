@@ -4,10 +4,32 @@ import numpy as np
 from itertools import combinations
 from scipy.interpolate import UnivariateSpline
 
+import torch
 
 def normalize(vector, point):
   return vector - point
 
+
+def interpolate_x(timesteps, z):
+  n_ts = (timesteps.max() - timesteps.min() + 1)
+  x = timesteps
+  yx = z
+  if n_ts > len(x) and len(x) > 3:
+    interp_func_X = UnivariateSpline(x, yx)
+
+    yx_ = []
+    it = 0
+    for i in range(x.min(), x.max()+1):
+      if i not in x:
+        yx_.append(interp_func_X(i))
+      else:
+        yx_.append(yx[it])
+        it+=1
+  else :
+    return yx
+
+  return np.array(yx_)
+  
 def get_interpolated_xy(timesteps, x_coord, y_coord):
   n_ts = (timesteps.max() - timesteps.min() + 1)
   x = timesteps
