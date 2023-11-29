@@ -1,8 +1,16 @@
 import os 
-MAIN_DIR = "/main/argoverse2"
-TRAIN_DIR = os.path.join(MAIN_DIR, "train")
-VAL_DIR = os.path.join(MAIN_DIR, "val")
+from colorama import Fore, Back, Style
+
+
+MAIN_DIR = "/main/Argoverse Dataset/"
+TRAIN_DIR = os.path.join(MAIN_DIR, "val__")
+VAL_DIR = os.path.join(MAIN_DIR, "val__")
 TEST_DIR = os.path.join(MAIN_DIR, "test")
+
+OUT_DIR = os.path.join(MAIN_DIR, "out")
+TB_DIR = os.path.join(OUT_DIR, "tb")
+CKPT_DIR = os.path.join(OUT_DIR, "ckpt")
+
 
 # Configs
 
@@ -16,6 +24,18 @@ LANE_DL = 1e13
 
 ARGO_PAST_TIME = 5
 ARGO_SAMPLE_RATE = 10
+
+
+EPOCHS = 100
+LOG_STEP = 10
+DEVICE = 'cuda'
+CKPT_EPOCH = 10
+
+TRAIN_BS = 64
+VAL_BS = 128
+LR = 1e-3
+
+
 
 track_category_mapping = {
     0 : "TRACK_FRAGMENT",
@@ -93,3 +113,10 @@ DECODER = {
     'hidden_dim' : 128, 
     'out_dim' : OUT_DIM
 }
+
+
+blk = Style.BRIGHT + Fore.BLACK
+red = Style.BRIGHT + Fore.RED
+blu = Style.BRIGHT + Fore.BLUE
+grn_bck = Back.GREEN
+res = Style.RESET_ALL

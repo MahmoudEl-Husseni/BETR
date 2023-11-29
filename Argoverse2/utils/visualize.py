@@ -84,3 +84,24 @@ def plot_track(df: pd.DataFrame, track_id: str, colormap='RdBu'):
 
   fig = go.Figure(data=[trace], layout=layout)
   fig.show()
+
+
+
+def progress_bar(i, train_set_len, train_bs, length=70):
+  """
+  Displays a progress bar indicating the completion of a training step.
+
+  Args:
+    i (int): The current training step.
+    length (int, optional): The length of the progress bar in characters. Defaults to 70.
+
+  Returns:
+    A string representing the progress bar.
+  """
+
+  train_steps = (train_set_len / train_bs).__ceil__()
+
+  progress = (i+1)/train_steps
+  eq = '='
+  progress_bar = f"{red}{'progress:'}{res} {(f'{(progress*100):.2f}'+' %').ljust(7)} [{f'{eq*int(i*length/train_steps)}>'.ljust(length)}]"
+  return progress_bar

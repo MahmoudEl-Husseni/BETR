@@ -11,49 +11,53 @@ def normalize(vector, point):
 
 
 def interpolate_x(timesteps, z):
-  n_ts = (timesteps.max() - timesteps.min() + 1)
-  x = timesteps
-  yx = z
-  if n_ts > len(x) and len(x) > 3:
-    interp_func_X = UnivariateSpline(x, yx)
+    n_ts = (timesteps.max() - timesteps.min() + 1)
+    x = timesteps
+    yx = z
+    if n_ts > len(x) and len(x) > 3:
+      interp_func_X = UnivariateSpline(x, yx)
 
-    yx_ = []
-    it = 0
-    for i in range(x.min(), x.max()+1):
-      if i not in x:
-        yx_.append(interp_func_X(i))
-      else:
-        yx_.append(yx[it])
-        it+=1
-  else :
-    return yx
+      yx_ = []
+      it = 0
+      for i in range(x.min(), x.max()+1):
+        if i not in x:
+          yx_.append(interp_func_X(i))
+        else:
+          yx_.append(yx[it])
+          it+=1
+    else :
+      return yx
 
-  return np.array(yx_)
+    return np.array(yx_)
   
 def get_interpolated_xy(timesteps, x_coord, y_coord):
   n_ts = (timesteps.max() - timesteps.min() + 1)
   x = timesteps
   yx = x_coord
   yy = y_coord
-  if n_ts > len(x):
-    interp_func_X = UnivariateSpline(x, yx)
-    interp_func_Y = UnivariateSpline(x, yy)
+  try: 
+    if n_ts > len(x) and len(x) > 3:
+      interp_func_X = UnivariateSpline(x, yx)
+      interp_func_Y = UnivariateSpline(x, yy)
 
-    yx_ = []
-    yy_ = []
-    it = 0
-    for i in range(x.min(), x.max()+1):
-      if i not in x:
-        yx_.append(interp_func_X(i))
-        yy_.append(interp_func_Y(i))
-      else:
-        yx_.append(yx[it])
-        yy_.append(yy[it])
-        it+=1
-  else :
-    return yx, yy
-
+      yx_ = []
+      yy_ = []
+      it = 0
+      for i in range(x.min(), x.max()+1):
+        if i not in x:
+          yx_.append(interp_func_X(i))
+          yy_.append(interp_func_Y(i))
+        else:
+          yx_.append(yx[it])
+          yy_.append(yy[it])
+          it+=1
+    else :
+      return yx, yy
+  except: 
+    return np.array(x_coord), np.array(y_coord)
+    
   return np.array(yx_), np.array(yy_)
+
 
 def Angle_Distance_from_agent(df, loader):
   track_id = loader.focal_track_id
@@ -109,3 +113,22 @@ def fc_graph(num_nodes):
   edge_index = torch.tensor(np.vstack([edges, edges2]), dtype=torch.long).t().contiguous()
   
   return edge_index
+  
+def progress_bar(i, train_set_len, train_bs, length=70):
+  """
+  Displays a progress bar indicating the completion of a training step.
+
+  Args:
+    i (int): The current training step.
+    length (int, optional): The length of the progress bar in characters. Defaults to 70.
+
+  Returns:
+    A string representing the progress bar.
+  """
+
+  train_steps = (train_set_len / train_bs).__ceil__()
+
+  progress = (i+1)/train_steps
+  eq = '='
+  progress_bar = f"{red}{'progress:'}{res} {(f'{(progress*100):.2f}'+' %').ljust(7)} [{f'{eq*int(i*length/train_steps)}>'.ljust(length)}]"
+  return progress_bar

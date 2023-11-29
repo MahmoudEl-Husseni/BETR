@@ -92,6 +92,7 @@ def extract_agent_features(loader): # Time Complexity -> O(1) // discarding nump
   return data, center, radius
 
 
+
 def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RATIO): # Time Complexity -> O(n) (n: Number of objects)
 
   focal_track_id = loader.focal_track_id
@@ -127,10 +128,12 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
     yx = obj_df['position_x'].values
     yy = obj_df['position_y'].values
     
-    if len(t) < 1:
+    if len(t) < 3:
       continue
-
-    yx_, yy_ = get_interpolated_xy(t, yx, yy)
+	
+    # yx_, yy_ = get_interpolated_xy(t, yx, yy)
+    yx_ = interpolate_x(t, yx)
+    yy_ = interpolate_x(t, yy)
     yx_norm = normalize(yx_, norm_vec[0]).reshape(-1, 1)
     yy_norm = normalize(yy_, norm_vec[1]).reshape(-1, 1)
 
@@ -148,7 +151,9 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
     # velocity
     vx = obj_df['velocity_x'].values.reshape(-1, 1)
     vy = obj_df['velocity_y'].values.reshape(-1, 1)
-    vx, vy = get_interpolated_xy(t, vx, vy)
+    # vx, vy = get_interpolated_xy(t, vx, vy)
+    vx = interpolate_x(t, vx)
+    vy = interpolate_x(t, vy)
     vx = vx.reshape(-1, 1)
     vy = vy.reshape(-1, 1)
     
@@ -156,7 +161,7 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
     polyline_id = p_id
 
     # timestep
-    timesteps = np.arange(t.min(), t.max()+1)
+    timesteps = np.arange(t.min(), t.min()+len(yx_))
 
     # Object type
     OBJECT_TYPE.append([obj_df['object_type'].iloc[0]] * len(timesteps))
@@ -196,6 +201,7 @@ def extract_lane_features(avm, center, radius): # Time Complexity -> O(n) (n: No
     typ = poly.lane_type
     id = poly.id
     dir = calc_direction(xyz)
+    dir = np.arctan(dir)
 
 
     XYZ.append(xyz)
@@ -259,7 +265,7 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE, min_obj_ve
     dist_start = obj_data['DIST'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     dist_end = obj_data['DIST'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     dist_avg = (dist_start + dist_end) / 2.0
-    # print(f"Distance Shape: {dist_avg.shape}\tX Shape: {Xs.shape}")
+    
 
     angle_start = obj_data['ANGLE'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     angle_end = obj_data['ANGLE'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
@@ -317,7 +323,6 @@ def vectorize_lane(lane_data, dl=LANE_DL):
 
 def process_scene(scene, save_dir, typ):
     pref = scene.split('/')[-1]
-    os.makedirs(os.path.join(save_dir, pref), exist_ok=True)
 
     file_name = scene + "/scenario_" + pref + ".parquet"
     loader = ss.load_argoverse_scenario_parquet(file_name)
@@ -330,7 +335,8 @@ def process_scene(scene, save_dir, typ):
     agent_data, center, radius = extract_agent_features(loader)
     obj_data = extract_obj_features(df, loader, radius)
     lane_data = extract_lane_features(avm, center, radius)
-    
+    if len(obj_data['XYTs'])==0 or len(lane_data['XYZ'])==0: 
+        return 
     gt_normalized = agent_data['gt_normalized']
 
     # Vectorize data 
@@ -338,10 +344,14 @@ def process_scene(scene, save_dir, typ):
     obj_vectors, obj_mask = vectorize_obj(obj_data)
     lane_vectors, lane_mask = vectorize_lane(lane_data)
 
-  
+    n_obj = len(obj_mask)
+    n_lane = len(lane_mask)
+    
+    if len(obj_vectors)==0 or len(lane_vectors) ==0:
+        return 
     save_agent(agent_vectors, pref, save_dir, "agents")
-    save_objects(obj_vectors, pref, save_dir, "obj")
-    save_lanes(lane_vectors, pref, save_dir, "lanes")
+    save_objects(obj_vectors, pref, save_dir, "obj", n_obj)
+    save_lanes(lane_vectors, pref, save_dir, "lanes", n_lane)
 
     if typ!='test':
       save_gt(gt_normalized, pref, save_dir, "gt")
@@ -372,7 +382,7 @@ def main():
         if scene.split('/')[-1]+'_agent_vector.npy' in finished_scenes: 
             continue
         
-        cnt+=1
+
         p = mp.Process(target=process_scene, args=(scene, SAVE_DIR, args.type))
         p.start()
         processes.append(p)
