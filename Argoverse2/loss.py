@@ -11,7 +11,7 @@ class pytorch_log_mean_displacement_error(nn.Module):
         super(pytorch_log_mean_displacement_error, self).__init__()
     
 
-    def forward(self, y, y_pred, conf): 
+    def forward(self, y, y_pred): 
         """
         Args:
             y (Tensor): array of shape (bs)x(time)x(2D coords)

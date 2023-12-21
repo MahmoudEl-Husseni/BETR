@@ -369,6 +369,7 @@ def main():
         os.makedirs(os.path.join(SAVE_DIR, "agents"), exist_ok=True)
         os.makedirs(os.path.join(SAVE_DIR, "obj"), exist_ok=True)
         os.makedirs(os.path.join(SAVE_DIR, "lanes"), exist_ok=True)
+        
         if args.type!='test':
           os.makedirs(os.path.join(SAVE_DIR, "gt"))
           

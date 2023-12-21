@@ -8,7 +8,12 @@ from utils.visualize import *
 from utils.ckpt_utils import *
 from Vectornet import VectorNet
 from utils.geometry import progress_bar
-from dataset import Vectorset, custom_collate
+
+if EXPERIMENT_NAME=='Argo-avg': 
+    from dataset_argavg import Vectorset, custom_collate
+elif EXPERIMENT_NAME=='Argo-1' or EXPERIMENT_NAME=='Argo-Normalized':
+    from dataset import Vectorset, custom_collate
+
 
 
 import time
@@ -89,6 +94,9 @@ def train_from_last_ckpt(model,
     # Get min loss 
     best_logs_file = os.path.join(OUT_DIR, "best_logs.csv")
     best_loss = get_min_loss(best_logs_file)
+    
+    tb_it_tr = 0
+    tb_it_v = 0
 
 
     for epoch in range(end_epoch+1, EPOCHS):
@@ -105,6 +113,7 @@ def train_from_last_ckpt(model,
 
         
         for i, data in enumerate(train_loader):
+        
             print("\r", end=f'{progress_bar(i, train_set_len=len(train_loader)*TRAIN_BS, train_bs=TRAIN_BS, length=75)}')
             
             
@@ -118,10 +127,13 @@ def train_from_last_ckpt(model,
             for name, result in __results.items(): 
                 if isinstance(result, list): 
                     result = np.mean(result)
-                writer.add_scalar(f'{name}/train', result, i)
+                writer.add_scalar(f'{name}/train', result, tb_it_tr)
 
-            writer.add_scalar('loss/train', loss, i)
-            writer.add_scalar('lr', scheduler.get_last_lr()[0], i)
+            writer.add_scalar('loss/train', loss, tb_it_tr)
+            writer.add_scalar('lr', scheduler.get_last_lr()[0], tb_it_tr)
+            
+            tb_it_tr += 1
+
 
 
 
@@ -129,7 +141,7 @@ def train_from_last_ckpt(model,
         with open(os.path.join(OUT_DIR, "logs.csv"), "a") as f:
             line = f"{epoch+1}"
 
-            for result in results.values():
+            for result in __results.values():
                 if isinstance(result, list): 
                     result = np.mean(result)
                 line += f",{result}"
@@ -165,6 +177,7 @@ def train_from_last_ckpt(model,
 
 
         # save best model and write logs to csv file
+        
         if loss < best_loss:
             best_loss = loss
             
@@ -179,6 +192,7 @@ def train_from_last_ckpt(model,
             )
 
             with open(os.path.join(OUT_DIR, "best_logs.csv"), "a") as f:
+
                 f.write(line)
 
 
@@ -200,18 +214,23 @@ def train_from_last_ckpt(model,
                 gt = data[3]
                 __results = eval_metrics(gt, y_pred, confidences, metrics)
 
-                loss = loss_func(gt, y_pred, confidences)
+                loss = loss_criteria(gt, y_pred, confidences)
 
                 for name, result in __results.items(): 
                     if isinstance(result, list): 
                         result = np.mean(result)
-                    writer.add_scalar(f'{name}/val', result, i)
+                    writer.add_scalar(f'{name}/val', result, tb_it_v)
 
-                writer.add_scalar('loss/val', loss, i)
+                writer.add_scalar('loss/val', loss, tb_it_v)
+                tb_it_v += 1
 
 if __name__=='__main__': 
-    trainset = Vectorset(TRAIN_DIR)
-    valset = Vectorset(VAL_DIR)
+    if EXPERIMENT_NAME=='Argo-1' : 
+        trainset = Vectorset(TRAIN_DIR, normalize=False)
+        valset = Vectorset(VAL_DIR, normalize=False)
+    else :
+        trainset = Vectorset(TRAIN_DIR, normalize=True)
+        valset = Vectorset(VAL_DIR, normalize=True)
     
     model = VectorNet()
     trainloader = DataLoader(trainset, batch_size=TRAIN_BS, shuffle=True, collate_fn=custom_collate)

@@ -79,9 +79,9 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, output_dim, dropout=0.1):
         super(TransformerEncoderLayer, self).__init__()
         self.self_attention = MultiheadSelfAttention(d_model, num_heads)
-        self.norm1 = nn.LayerNorm(d_model)
+        self.norm1 = nn.LayerNorm(d_model).to(DEVICE)
         self.feedforward = Feedforward(d_model, d_ff, output_dim, dropout)
-        self.norm2 = nn.LayerNorm(output_dim)
+        self.norm2 = nn.LayerNorm(output_dim).to(DEVICE)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):

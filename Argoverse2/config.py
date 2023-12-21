@@ -1,6 +1,7 @@
 import os 
 from colorama import Fore, Back, Style
 
+EXPERIMENT_NAME = "Argo-avg"
 
 MAIN_DIR = "/main/Argoverse Dataset/"
 TRAIN_DIR = os.path.join(MAIN_DIR, "val__")
@@ -13,7 +14,6 @@ CKPT_DIR = os.path.join(OUT_DIR, "ckpt")
 
 
 # Configs
-
 
 N_PAST = 60
 N_FUTURE = 50
@@ -34,6 +34,21 @@ CKPT_EPOCH = 10
 TRAIN_BS = 64
 VAL_BS = 128
 LR = 1e-3
+
+
+# Stats Paths
+LANE_MEANS = os.path.join(MAIN_DIR, "stats/lanes/lane_means.npy")
+LANE_STDS = os.path.join(MAIN_DIR, "stats/lanes/lane_stds.npy")
+
+AGENT_MEANS = os.path.join(MAIN_DIR, "stats/agents/agent_means.npy")
+AGENT_STDS = os.path.join(MAIN_DIR, "stats/agents/agent_stds.npy")
+
+OBJ_MEANS = os.path.join(MAIN_DIR, "stats/objects/object_means.npy")
+OBJ_STDS = os.path.join(MAIN_DIR, "stats/objects/object_stds.npy")
+
+GT_MEANS = os.path.join(MAIN_DIR, "stats/gt/gt_means.npy")
+GT_STDS = os.path.join(MAIN_DIR, "stats/gt/gt_stds.npy")
+
 
 
 

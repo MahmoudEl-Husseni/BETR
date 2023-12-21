@@ -28,10 +28,9 @@ class Agentset(Dataset):
 
     self.prefs = os.listdir(os.path.join(self.main_dir, self.sub_dir))
     self.prefs = [i.split('_')[0] for i in self.prefs]
-    
+
 
     self.agent_indices = [0, 1, 2, 3, 5, 7, 8, 9] 
-
 
     if self.normalize:
       self.means = np.load(AGENT_MEANS)
@@ -67,12 +66,13 @@ class Agentset(Dataset):
         gt_path = os.path.join(self.main_dir, self.gt_sub_dir, gt_name)
         gt = np.load(gt_path).reshape(1, 50, 2)
 
-        if self.normalize: 
+        if self.normalize:
           gt = (gt - self.gt_means) / self.gt_stds
 
         GT = np.vstack([GT, gt])
 
-    return torch.Tensor(X), torch.Tensor(GT)  
+    return torch.Tensor(X), torch.Tensor(GT)
+  
 
 
 class Objectset(Dataset):
@@ -92,7 +92,6 @@ class Objectset(Dataset):
     self.suff = '_obj_vector.npz'
     self.prefs = os.listdir(os.path.join(self.main_dir, self.sub_dir))
 
-
     if self.normalize:
       self.means = np.load(OBJ_MEANS)
       self.stds = np.load(OBJ_STDS)
@@ -104,18 +103,20 @@ class Objectset(Dataset):
 
   def __getitem__(self, prefs):
     
-    x = np.empty((0, self.n_features))
+    x = np.empty((0, self.n_vec, self.n_features))
     
-    for pref in prefs:
+    for pref in prefs: 
       file_name = pref + self.suff
       file_path = os.path.join(self.main_dir, self.sub_dir, file_name)
       data = np.load(file_path, allow_pickle=True)
-      
       data = data['vec'][:, :-1]
-
 
       if self.normalize:
         data = (data - self.means) / self.stds
+
+
+      reshaped_data = data.reshape(-1, self.n_vec, self.n_features)
+      data = np.expand_dims(reshaped_data.mean(axis=0), 0)
 
       x = np.vstack((x, data))
 
@@ -130,7 +131,7 @@ class Laneset(Dataset):
   for each pref (scene) has N lanes returns N * 35 * 9
   '''
   def __init__(self, dir, normalize=False):
-
+    
     self.normalize = normalize
     self.n_features = 9
     self.n_vec = 35
@@ -141,7 +142,7 @@ class Laneset(Dataset):
     self.prefs = os.listdir(os.path.join(self.main_dir, self.sub_dir))
     self.lane_indices = [*range(9)] # [N * 9]
 
-    if self.normalize: 
+    if self.normalize:
       self.means = np.load(LANE_MEANS)
       self.stds = np.load(LANE_STDS)
 
@@ -151,22 +152,26 @@ class Laneset(Dataset):
 
   def __getitem__(self, prefs):
     
-    x = np.empty((0, self.n_features))
+    x = np.empty((0, self.n_vec, self.n_features))
     
     for pref in prefs: 
       file_name = pref + self.suff
       file_path = os.path.join(self.main_dir, self.sub_dir, file_name)
       data = np.load(file_path, allow_pickle=True)
       data = data['vec'][:, :-1]
-      
-      if self.normalize: 
+
+      if self.normalize:
         data = (data - self.means) / self.stds
+
+
+      reshaped_data = data.reshape(-1, self.n_vec, self.n_features)
+      data = np.expand_dims(reshaped_data.mean(axis=0), 0)
 
       x = np.vstack((x, data))
 
     return x
-  
-  
+
+
 
 
 class Vectorset(Dataset):
@@ -183,7 +188,6 @@ class Vectorset(Dataset):
     self.lane_set = Laneset(self.main_dir, self.normalize)
     
     self.prefs = self.agent_set.prefs
-
 
   def __len__(self):
     return len(self.prefs)
@@ -246,8 +250,8 @@ def custom_collate(batch: List[Tuple[torch.Tensor, np.ndarray, np.ndarray, torch
         obj = torch.cat([obj, torch.Tensor(b[1].astype('float')).view(-1, 60, obj_feat)])
         lane = torch.cat([lane, torch.Tensor(b[2]).view(-1, 35, lane_feat)])
         gt = torch.cat([gt, torch.Tensor(b[3])])
-        obj_sm += b[1].shape[0] / 60
-        lane_sm += b[2].shape[0] / 35
+        obj_sm += b[1].shape[0]
+        lane_sm += b[2].shape[0] 
         n_objs.append(obj_sm)
         n_lanes.append(lane_sm)
 
