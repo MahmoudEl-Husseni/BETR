@@ -78,21 +78,42 @@ class MultiheadSelfAttention(nn.Module):
 class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, output_dim, dropout=0.1):
         super(TransformerEncoderLayer, self).__init__()
+
+        # Multihead Self-Attention
         self.self_attention = MultiheadSelfAttention(d_model, num_heads)
         self.norm1 = nn.LayerNorm(d_model).to(DEVICE)
-        self.feedforward = Feedforward(d_model, d_ff, output_dim, dropout)
+
+        # Conversion layer
+        self.convert = nn.Linear(d_model, output_dim).to(DEVICE)
+        self.act = nn.ReLU().to(DEVICE)
+        self.layernorm_convert = nn.LayerNorm(output_dim).to(DEVICE)
+
+
+        # Feedforward
+
+        # self.feedforward = Feedforward(d_model, d_ff, output_dim, dropout)
+
+        self.feedforward = Feedforward(output_dim, d_ff, output_dim, dropout)
         self.norm2 = nn.LayerNorm(output_dim).to(DEVICE)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # Self-Attention
-        attention_output, att_weigths = self.self_attention(x, x, x)
+        attention_output, att_weigths = self.self_attention(x, x, x) #  -> bs * n_heads * dim = 27 * 1 * 51
+        # print(attention_output.shape)
+
         x = x + self.dropout(attention_output)
         x = self.norm1(x)
 
+        # Conversion layer
+        x = self.convert(x)
+        x = self.act(x)
+        x = self.layernorm_convert(x)
+
+
         # Feedforward
         ff_output = self.feedforward(x)
-        # ff_output = x + self.dropout(ff_output)
+        ff_output = x + self.dropout(ff_output)
         x = self.norm2(ff_output)
 
         return x, att_weigths

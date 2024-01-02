@@ -5,6 +5,8 @@ from itertools import combinations
 from scipy.interpolate import UnivariateSpline
 
 import torch
+from torch_geometric.data import Batch, Data
+
 
 def normalize(vector, point):
   return vector - point
@@ -132,3 +134,50 @@ def progress_bar(i, train_set_len, train_bs, length=70):
   eq = '='
   progress_bar = f"{red}{'progress:'}{res} {(f'{(progress*100):.2f}'+' %').ljust(7)} [{f'{eq*int(i*length/train_steps)}>'.ljust(length)}]"
   return progress_bar
+
+
+def create_agent_graph_data(batch_data, num_nodes):
+  '''
+  Create bs graphs:-
+  input:- list of records
+  '''
+
+  batch_data_ls = []
+  batches = []
+
+  for i, raw_data in enumerate(batch_data):
+    data = Data()
+    data.x = raw_data
+
+    edge_index = fc_graph(num_nodes)
+
+    data.edge_index = edge_index
+
+    batch_data_ls.append(data)
+    batches += [*[i]*num_nodes]
+
+  base_data = Batch.from_data_list(batch_data_ls)
+  base_data.batch = torch.tensor(batches)
+
+  return base_data
+
+
+def create_obj_graph(obj, num_nodes):
+  graph_list = []
+  batches = []
+  for i, raw_data in enumerate(obj):
+
+    data = Data()
+    data.x = raw_data
+
+    edge_index = fc_graph(num_nodes)
+
+    data.edge_index = edge_index
+
+    graph_list.append(data)
+    batches += [*[i]*num_nodes]
+
+  base_data = Batch.from_data_list(graph_list)
+  base_data.batch = torch.Tensor(batches).to(int)
+
+  return base_data

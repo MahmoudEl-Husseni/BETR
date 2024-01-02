@@ -3,13 +3,19 @@ import torch
 import logging
 
 
-def save_checkpoint(checkpoint_dir, model, optimizer, end_epoch, date=None, model_name=None, name=None):
+def save_checkpoint(checkpoint_dir, 
+                    model, 
+                    optimizer, 
+                    scheduler,
+                    end_epoch, 
+                    date=None, model_name=None, name=None, save_scheduler=False):
     """Saves a checkpoint of a model and optimizer.
 
     Args:
         checkpoint_dir: The directory to save the checkpoint to.
         model: The model to save.
         optimizer: The optimizer to save.
+        scheduler: The scheduler to save.
         end_epoch: The epoch number of the checkpoint.
         date: The date of the checkpoint.
         model_name: The name of the model.
@@ -25,6 +31,9 @@ def save_checkpoint(checkpoint_dir, model, optimizer, end_epoch, date=None, mode
         'end_epoch': end_epoch,
     }
 
+    if save_scheduler:
+        state['scheduler'] = scheduler.state_dict()
+    
     if name is not None:
         checkpoint_path = os.path.join(checkpoint_dir, name)
         checkpoint_path = checkpoint_path + '.pth'
@@ -35,7 +44,7 @@ def save_checkpoint(checkpoint_dir, model, optimizer, end_epoch, date=None, mode
     logging.info('model saved to %s' % checkpoint_path)
 
 
-def load_checkpoint(checkpoint_path, model, optimizer):
+def load_checkpoint(checkpoint_path, model, optimizer, scheduler, save_scheduler=False):
     """Loads a checkpoint into a model and optimizer.
 
     Args:
@@ -50,5 +59,8 @@ def load_checkpoint(checkpoint_path, model, optimizer):
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
+    if save_scheduler:
+        scheduler.load_state_dict(checkpoint['scheduler'])
+
     end_epoch = checkpoint['end_epoch']
     return end_epoch

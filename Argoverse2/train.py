@@ -10,8 +10,8 @@ from Vectornet import VectorNet
 from utils.geometry import progress_bar
 
 if EXPERIMENT_NAME=='Argo-avg': 
-    from dataset_argoavg import Vectorset, custom_collate
-elif EXPERIMENT_NAME=='Argo-1' or EXPERIMENT_NAME=='Argo-Normalized':
+    from dataset_argavg import Vectorset, custom_collate
+elif EXPERIMENT_NAME in ['Argo-1', 'Argo-Normalized', 'Argo-pad', 'Argo-GNN-GNN']:
     from dataset import Vectorset, custom_collate
 
 
@@ -85,21 +85,27 @@ def train_from_last_ckpt(model,
     
     if os.path.exists(last_ckpt_weights): 
         # Load weights to model
-        end_epoch = load_checkpoint(last_ckpt_weights, model, optimizer)
+        end_epoch = load_checkpoint(last_ckpt_weights, model, optimizer, scheduler=scheduler, save_scheduler=True)
+        model.to(DEVICE)
 
     else : 
         # Start Training from first epoch
         end_epoch = 0
+        
+    # model = nn.DataParallel(model)
     
     # Get min loss 
     best_logs_file = os.path.join(OUT_DIR, "best_logs.csv")
     best_loss = get_min_loss(best_logs_file)
     
-    tb_it_tr = 0
-    tb_it_v = 0
 
 
+    
+    step_cycle = len(train_loader.dataset) / STEPS_PER_EPOCH
     for epoch in range(end_epoch+1, EPOCHS):
+        tb_it_tr = (epoch-1) * STEPS_PER_EPOCH 
+        tb_it_v = epoch * len(val_loader)
+
         model.train()
 
         print(f'{red}{"[INFO]:  "}{res}Epoch {blk}{f"#{epoch+1}/{EPOCHS}"}{res} started')
@@ -117,26 +123,73 @@ def train_from_last_ckpt(model,
             print("\r", end=f'{progress_bar(i, train_set_len=len(train_loader)*TRAIN_BS, train_bs=TRAIN_BS, length=75)}')
             
             
-            if i % LOG_STEP==0:
+            if i % LOG_STEP==0 :
                 logging.info(f"Training Epoch {epoch+1}, batch {i+1} / {len(train_loader)}")
 
             loss, __results = train_one_batch(model, data, optimizer, loss_criteria, scheduler, metrics)
             time.sleep(5)
 
+
+
+
             # Write results on tensorboard
-            for name, result in __results.items(): 
-                if isinstance(result, list): 
-                    result = np.mean(result)
-                writer.add_scalar(f'{name}/train', result, tb_it_tr)
+            # Each epoch 71 steps
+            # epoch_step = i % 71
+            # step = epoch * 71 + epoch_step
+            if i % step_cycle ==0:
+                # Log results
+                for name, result in __results.items(): 
+                    if isinstance(result, list): 
+                        result = np.mean(result)
+                    writer.add_scalar(f'{name}/train', result, tb_it_tr)
 
-            writer.add_scalar('loss/train', loss, tb_it_tr)
-            writer.add_scalar('lr', scheduler.get_last_lr()[0], tb_it_tr)
-            
-            tb_it_tr += 1
+                writer.add_scalar('loss/train', loss, tb_it_tr)
+                writer.add_scalar('lr', scheduler.get_last_lr()[0], tb_it_tr)
+                
+                # Log weights
+                for name, param in model.named_parameters(): 
+                    writer.add_histogram(name, param, tb_it_tr)
+
+                # Log gradients
+                for name, param in model.named_parameters():
+                    writer.add_histogram(f'{name}_grad', param.grad, tb_it_tr)
+
+                tb_it_tr += 1
+
+
+        # ====================================================================================================
+        # Validation loop
+        with torch.no_grad():
+            model.eval()
+
+            for i, data in enumerate(val_loader):
+
+                print("\r", end=f'{progress_bar(i, length=75, train_set_len=len(val_loader)*VAL_BS, train_bs=VAL_BS)}')
+                logging.info(f"Validation Epoch {epoch+1}, batch {i+1} / {len(val_loader)}")
+
+
+                out = model(data)
+                
+                y_pred, confidences = out[:, :-N_TRAJ], out[:, -N_TRAJ:]
+                y_pred = y_pred.view(-1, N_TRAJ, N_FUTURE, 2)
+
+                gt = data[3]
+                __results = eval_metrics(gt, y_pred, confidences, metrics)
+
+                loss = loss_criteria(gt, y_pred, confidences)
+
+
+                for name, result in __results.items(): 
+                    if isinstance(result, list): 
+                        result = np.mean(result)
+                    writer.add_scalar(f'{name}/val', result, tb_it_v)
+
+                writer.add_scalar('loss/val', loss, tb_it_v)
+                tb_it_v += 1
 
 
 
-
+        # ====================================================================================================
         # write logs to csv file
         with open(os.path.join(OUT_DIR, "logs.csv"), "a") as f:
             line = f"{epoch+1}"
@@ -158,10 +211,12 @@ def train_from_last_ckpt(model,
                 CKPT_DIR,
                 model,
                 optimizer,
+                scheduler,
                 epoch,
                 date=current_time,
                 model_name=None,
                 name=f"model_{epoch}",
+                save_scheduler=True
             )
 
         # Save checkpoints
@@ -169,10 +224,12 @@ def train_from_last_ckpt(model,
             CKPT_DIR,
             model,
             optimizer,
+            scheduler,
             epoch,
             date=None,
             model_name=None,
             name="last_model",
+            save_scheduler=True
         )
 
 
@@ -185,47 +242,22 @@ def train_from_last_ckpt(model,
                 CKPT_DIR,
                 model,
                 optimizer,
+                scheduler,
                 epoch,
                 date=None,
                 model_name=None,
                 name="best_model",
+                save_scheduler=True
             )
 
             with open(os.path.join(OUT_DIR, "best_logs.csv"), "a") as f:
-
                 f.write(line)
 
 
 
-        # Validation loop
-        with torch.no_grad():
-
-            for i, data in enumerate(val_loader):
-
-                print("\r", end=f'{progress_bar(i, length=75, train_set_len=len(val_loader)*VAL_BS, train_bs=VAL_BS)}')
-                logging.info(f"Validation Epoch {epoch+1}, batch {i+1} / {len(val_loader)}")
-
-
-                out = model(data)
-                
-                y_pred, confidences = out[:, :-N_TRAJ], out[:, -N_TRAJ:]
-                y_pred = y_pred.view(-1, N_TRAJ, N_FUTURE, 2)
-
-                gt = data[3]
-                __results = eval_metrics(gt, y_pred, confidences, metrics)
-
-                loss = loss_criteria(gt, y_pred, confidences)
-
-                for name, result in __results.items(): 
-                    if isinstance(result, list): 
-                        result = np.mean(result)
-                    writer.add_scalar(f'{name}/val', result, tb_it_v)
-
-                writer.add_scalar('loss/val', loss, tb_it_v)
-                tb_it_v += 1
 
 if __name__=='__main__': 
-    if EXPERIMENT_NAME=='Argo-1' : 
+    if EXPERIMENT_NAME=='Argo-pad' : 
         trainset = Vectorset(TRAIN_DIR, normalize=False)
         valset = Vectorset(VAL_DIR, normalize=False)
     else :
@@ -233,6 +265,8 @@ if __name__=='__main__':
         valset = Vectorset(VAL_DIR, normalize=True)
     
     model = VectorNet()
+    # model = nn.DataParallel(model)
+    
     trainloader = DataLoader(trainset, batch_size=TRAIN_BS, shuffle=True, collate_fn=custom_collate)
     valloader = DataLoader(valset, batch_size=VAL_BS, shuffle=True, collate_fn=custom_collate)
     

@@ -1,14 +1,14 @@
 import os 
 from colorama import Fore, Back, Style
 
-EXPERIMENT_NAME = "Argo-avg"
+EXPERIMENT_NAME = "Argo-1"
 
 MAIN_DIR = "/main/Argoverse Dataset/"
-TRAIN_DIR = os.path.join(MAIN_DIR, "val__")
-VAL_DIR = os.path.join(MAIN_DIR, "val__")
+TRAIN_DIR = os.path.join(MAIN_DIR, "train_interm")
+VAL_DIR = os.path.join(MAIN_DIR, "val_interm")
 TEST_DIR = os.path.join(MAIN_DIR, "test")
 
-OUT_DIR = os.path.join(MAIN_DIR, "out")
+OUT_DIR = os.path.join(MAIN_DIR, f"out/{EXPERIMENT_NAME}_out")
 TB_DIR = os.path.join(OUT_DIR, "tb")
 CKPT_DIR = os.path.join(OUT_DIR, "ckpt")
 
@@ -28,6 +28,8 @@ ARGO_SAMPLE_RATE = 10
 
 EPOCHS = 100
 LOG_STEP = 10
+STEPS_PER_EPOCH = 71
+
 DEVICE = 'cuda'
 CKPT_EPOCH = 10
 
@@ -37,18 +39,21 @@ LR = 1e-3
 
 
 # Stats Paths
-LANE_MEANS = os.path.join(MAIN_DIR, "stats/lanes/lane_means.npy")
-LANE_STDS = os.path.join(MAIN_DIR, "stats/lanes/lane_stds.npy")
+LANE_MEANS = "stats/lanes/lane_means.npy"
+LANE_STDS = "stats/lanes/lane_stds.npy"
 
-AGENT_MEANS = os.path.join(MAIN_DIR, "stats/agents/agent_means.npy")
-AGENT_STDS = os.path.join(MAIN_DIR, "stats/agents/agent_stds.npy")
+AGENT_MEANS = "stats/agents/agent_means.npy"
+AGENT_STDS = "stats/agents/agent_stds.npy"
 
-OBJ_MEANS = os.path.join(MAIN_DIR, "stats/objects/object_means.npy")
-OBJ_STDS = os.path.join(MAIN_DIR, "stats/objects/object_stds.npy")
+OBJ_MEANS = "stats/objects/obj_means.npy"
+OBJ_STDS = "stats/objects/obj_stds.npy"
 
-GT_MEANS = os.path.join(MAIN_DIR, "stats/gt/gt_means.npy")
-GT_STDS = os.path.join(MAIN_DIR, "stats/gt/gt_stds.npy")
+GT_MEANS = "stats/gt/gt_means.npy"
+GT_STDS = "stats/gt/gt_stds.npy"
 
+# Padding params
+OBJ_PAD_LEN = 67
+LANE_PAD_LEN = 145
 
 
 
@@ -90,6 +95,7 @@ N_TRAJ = 6
 OUT_DIM = 2 * N_TRAJ * N_FUTURE + N_TRAJ
 
 
+# Architecture configs
 AGENT_ENC = {
     'd_model' : 8,
     'n_heads' : 2,
@@ -114,7 +120,28 @@ LANE_ENC = {
     'output_dim' : OUT_ENC_DIM
 }
 
-#  d_model, n_heads, hidden_dim, hidden_nheads, output_dim
+GRAPH_AGENT_ENC = {
+    'd_model' : 8,
+    'n_heads' : 2,
+    'd_hidden' : 32,
+    'd_out' : OUT_ENC_DIM
+}
+
+GRAPH_OBJ_ENC = {
+    'd_model' : 11,
+    'n_heads' : 1,
+    'd_hidden' : 32,
+    'd_out' : OUT_ENC_DIM
+}
+
+GRAPH_LANE_ENC = {
+    'd_model' : 9,
+    'n_heads' : 3,
+    'd_hidden' : 32,
+    'd_out' : OUT_ENC_DIM
+}
+
+
 GLOBAL_ENC = {
     'in_dim' : 17,
     # 'n_heads' : 2,
@@ -122,6 +149,14 @@ GLOBAL_ENC = {
     # 'hidden_nheads' : 2,
     'out_dim' : 64
 }
+
+GLOBAL_ENC_TRANS = {
+    'd_model' : 17,
+    'num_heads' : 1,
+    'd_ff' : 32,
+    'output_dim' : 64
+}
+
 
 DECODER = {
     'in_dim' : GLOBAL_ENC['out_dim'], # 64
