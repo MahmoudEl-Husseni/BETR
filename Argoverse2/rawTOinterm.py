@@ -1,7 +1,7 @@
 from config import *
 from utils.geometry import calc_direction, n_candidates, Angle_Distance_from_agent, get_avg_vectors
 
-from utils.geometry import normalize, get_interpolated_xy, get_avg, pad_obj_vectors, pad_lane_vectors
+from utils.geometry import normalize, get_interpolated_xy, get_avg_vectors, interpolate_x
 from utils.data import *
 
 import os
@@ -92,6 +92,7 @@ def extract_agent_features(loader): # Time Complexity -> O(1) // discarding nump
   return data, center, radius
 
 
+
 def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RATIO): # Time Complexity -> O(n) (n: Number of objects)
 
   focal_track_id = loader.focal_track_id
@@ -115,7 +116,7 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
 
 
   agent_avg_past_velocity = np.linalg.norm(df.loc[(df['track_id']==focal_track_id) & (df['timestep']<N_PAST), ['velocity_x', 'velocity_y']].values, axis=1).mean()
-  df = df[df['displacement_from_agent'] < agent_avg_past_velocity * distance_ratio]
+  # df = df[df['displacement_from_agent'] < agent_avg_past_velocity * distance_ratio]
   
 
   for t_id in obj_track_ids:
@@ -127,29 +128,40 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
     yx = obj_df['position_x'].values
     yy = obj_df['position_y'].values
     
-    if len(t) < 1:
+    if len(t) < 3:
       continue
-
-    yx_, yy_ = get_interpolated_xy(t, yx, yy)
+	
+    # yx_, yy_ = get_interpolated_xy(t, yx, yy)
+    yx_ = interpolate_x(t, yx)
+    yy_ = interpolate_x(t, yy)
     yx_norm = normalize(yx_, norm_vec[0]).reshape(-1, 1)
     yy_norm = normalize(yy_, norm_vec[1]).reshape(-1, 1)
 
     # Distance From Agent
     distance = obj_df['displacement_from_agent'].values.reshape(-1, 1)
+    distance = interpolate_x(t, distance).reshape(-1, 1)
+    
     angle = obj_df['angle_to_agent'].values.reshape(-1, 1)
-
+    angle = interpolate_x(t, angle).reshape(-1, 1)
+    
     # Heading
     heading = obj_df['heading'].values.reshape(-1, 1)
-
+    heading = interpolate_x(t, heading).reshape(-1, 1)
+    
     # velocity
     vx = obj_df['velocity_x'].values.reshape(-1, 1)
     vy = obj_df['velocity_y'].values.reshape(-1, 1)
-
+    # vx, vy = get_interpolated_xy(t, vx, vy)
+    vx = interpolate_x(t, vx)
+    vy = interpolate_x(t, vy)
+    vx = vx.reshape(-1, 1)
+    vy = vy.reshape(-1, 1)
+    
     # Polyline id
     polyline_id = p_id
 
     # timestep
-    timesteps = np.arange(t.min(), t.max()+1)
+    timesteps = np.arange(t.min(), t.min()+len(yx_))
 
     # Object type
     OBJECT_TYPE.append([obj_df['object_type'].iloc[0]] * len(timesteps))
@@ -173,10 +185,11 @@ def extract_obj_features(df, loader, radius, distance_ratio=VELOCITY_DISTANCE_RA
       'mask_tovectors' : mask_tovectors
   }
   return data
-
+  
 
 def extract_lane_features(avm, center, radius): # Time Complexity -> O(n) (n: No. Polylines)
-  polylines = avm.get_nearby_lane_segments(center, radius*RADIUS_OFFSET)
+  # polylines = avm.get_nearby_lane_segments(center, radius*RADIUS_OFFSET)
+  polylines = avm.get_nearby_lane_segments(center, 1000000000)
   XYZ = []
   IS_INTER = []
   TYP = []
@@ -189,6 +202,7 @@ def extract_lane_features(avm, center, radius): # Time Complexity -> O(n) (n: No
     typ = poly.lane_type
     id = poly.id
     dir = calc_direction(xyz)
+    dir = np.arctan(dir)
 
 
     XYZ.append(xyz)
@@ -245,28 +259,29 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE, min_obj_ve
       continue
 
 
-    ts_start = obj_data['XYTs'][_mask][n_frames_per_vector::n_frames_per_vector, 4].reshape(-1, 1)
+    ts_start = obj_data['XYTs'][_mask][:-n_frames_per_vector:n_frames_per_vector, 4].reshape(-1, 1)
     ts_end = obj_data['XYTs'][_mask][n_frames_per_vector::n_frames_per_vector, 4].reshape(-1, 1)
     ts_avg = (ts_start + ts_end) / 2.0
 
-    dist_start = obj_data['DIST'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    dist_start = obj_data['DIST'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     dist_end = obj_data['DIST'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     dist_avg = (dist_start + dist_end) / 2.0
+    
 
-    angle_start = obj_data['ANGLE'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    angle_start = obj_data['ANGLE'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     angle_end = obj_data['ANGLE'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     angle_avg = (angle_start + angle_end) / 2.0
 
-    vx_start = obj_data['VELOCITY'][_mask, 0][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    vx_start = obj_data['VELOCITY'][_mask, 0][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     vx_end = obj_data['VELOCITY'][_mask, 0][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     vx_avg = (vx_start + vx_end) / 2.0
 
-    vy_start = obj_data['VELOCITY'][_mask, 1][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    vy_start = obj_data['VELOCITY'][_mask, 1][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     vy_end = obj_data['VELOCITY'][_mask, 1][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     vy_avg = (vy_start + vy_end) / 2.0
 
 
-    heading_start = obj_data['HEADING'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
+    heading_start = obj_data['HEADING'][_mask][:-n_frames_per_vector:n_frames_per_vector,].reshape(-1, 1)
     heading_end = obj_data['HEADING'][_mask][n_frames_per_vector::n_frames_per_vector].reshape(-1, 1)
     heading_avg = (heading_start + heading_end) / 2.0
 
@@ -284,7 +299,7 @@ def vectorize_obj(obj_data, dt=TRAJ_DT, sample_rate=ARGO_SAMPLE_RATE, min_obj_ve
     mask.append(slice(len(vectors) - len(_vectors), len(vectors)))
 
   return vectors, mask
-
+  
 
 def vectorize_lane(lane_data, dl=LANE_DL):
   vectors = np.empty((0, 10))
@@ -309,7 +324,6 @@ def vectorize_lane(lane_data, dl=LANE_DL):
 
 def process_scene(scene, save_dir, typ):
     pref = scene.split('/')[-1]
-    os.mkdir(os.path.join(save_dir, pref), exist_ok=True)
 
     file_name = scene + "/scenario_" + pref + ".parquet"
     loader = ss.load_argoverse_scenario_parquet(file_name)
@@ -320,9 +334,10 @@ def process_scene(scene, save_dir, typ):
     avm = ArgoverseStaticMap.from_map_dir(log_map_dirpath=log_map_dirpath, build_raster=False)
 
     agent_data, center, radius = extract_agent_features(loader)
-    obj_data = extract_obj_features(df, loader)
+    obj_data = extract_obj_features(df, loader, radius)
     lane_data = extract_lane_features(avm, center, radius)
-    
+    if len(obj_data['XYTs'])==0 or len(lane_data['XYZ'])==0: 
+        return 
     gt_normalized = agent_data['gt_normalized']
 
     # Vectorize data 
@@ -330,10 +345,14 @@ def process_scene(scene, save_dir, typ):
     obj_vectors, obj_mask = vectorize_obj(obj_data)
     lane_vectors, lane_mask = vectorize_lane(lane_data)
 
-  
+    n_obj = len(obj_mask)
+    n_lane = len(lane_mask)
+    
+    if len(obj_vectors)==0 or len(lane_vectors) ==0:
+        return 
     save_agent(agent_vectors, pref, save_dir, "agents")
-    save_objects(obj_vectors, pref, save_dir, "obj")
-    save_lanes(lane_vectors, pref, save_dir, "lanes")
+    save_objects(obj_vectors, pref, save_dir, "obj", n_obj)
+    save_lanes(lane_vectors, pref, save_dir, "lanes", n_lane)
 
     if typ!='test':
       save_gt(gt_normalized, pref, save_dir, "gt")
@@ -346,25 +365,29 @@ def main():
     SCENE_DIRS = [os.path.join(DATA_DIR, i) for i in os.listdir(DATA_DIR)]
 
     # Create save directory
-    if not os.path.exists(SAVE_DIR):
-        os.makedirs(SAVE_DIR)
-        os.makedirs(os.path.join(SAVE_DIR, "agents"))
-        os.makedirs(os.path.join(SAVE_DIR, "obj"))
-        os.makedirs(os.path.join(SAVE_DIR, "lanes"))
+    if not os.path.exists(os.path.join(SAVE_DIR, 'agents')):
+        os.makedirs(SAVE_DIR, exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "agents"), exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "obj"), exist_ok=True)
+        os.makedirs(os.path.join(SAVE_DIR, "lanes"), exist_ok=True)
         if args.type!='test':
           os.makedirs(os.path.join(SAVE_DIR, "gt"))
           
         finished_scenes = []
     else : 
-       finished_scenes = [i.split('/')[-1] for i in os.listdir(SAVE_DIR)]
+       finished_scenes = [i.split('/')[-1] for i in os.listdir(os.path.join(SAVE_DIR, 'agents'))]
 
     processes = []
+    
     for scene in tqdm(SCENE_DIRS):
-        if scene.split('/')[-1] in finished_scenes: 
+        if scene.split('/')[-1]+'_agent_vector.npy' in finished_scenes: 
             continue
+        
+
         p = mp.Process(target=process_scene, args=(scene, SAVE_DIR, args.type))
         p.start()
         processes.append(p)
+    
     for p in processes:
         p.join()
     
