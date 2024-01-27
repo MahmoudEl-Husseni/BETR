@@ -1,20 +1,45 @@
 import os 
 from colorama import Fore, Back, Style
 
-EXPERIMENT_NAME = "Argo-1"
+# EXPERIMENT_NAME = "Argo-1"
+SUPPORTED_EXPERIMENTS = [
+    "Argo-1", 
+    "Argo-Normalied", 
+    "Argo-pad", 
+    "Argo-avg", 
+    "Argo-GNN-GNN"
+]
 
+# Data Paths
 MAIN_DIR = "/main/Argoverse Dataset/"
 TRAIN_DIR = os.path.join(MAIN_DIR, "train_interm")
 VAL_DIR = os.path.join(MAIN_DIR, "val_interm")
 TEST_DIR = os.path.join(MAIN_DIR, "test")
 
-OUT_DIR = os.path.join(MAIN_DIR, f"out/{EXPERIMENT_NAME}_out")
+def OUT_DIR(EXPERIMENT_NAME): 
+    if EXPERIMENT_NAME in SUPPORTED_EXPERIMENTS: 
+        return os.path.join(MAIN_DIR, f"out/{EXPERIMENT_NAME}_out") 
+    else : 
+        raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
+
 TB_DIR = os.path.join(OUT_DIR, "tb")
 CKPT_DIR = os.path.join(OUT_DIR, "ckpt")
 
+# Stats Paths
+LANE_MEANS = "stats/lanes/lane_means.npy"
+LANE_STDS = "stats/lanes/lane_stds.npy"
+
+AGENT_MEANS = "stats/agents/agent_means.npy"
+AGENT_STDS = "stats/agents/agent_stds.npy"
+
+OBJ_MEANS = "stats/objects/obj_means.npy"
+OBJ_STDS = "stats/objects/obj_stds.npy"
+
+GT_MEANS = "stats/gt/gt_means.npy"
+GT_STDS = "stats/gt/gt_stds.npy"
+
 
 # Configs
-
 N_PAST = 60
 N_FUTURE = 50
 RADIUS_OFFSET = 1.5
@@ -37,26 +62,18 @@ TRAIN_BS = 64
 VAL_BS = 128
 LR = 1e-3
 
-
-# Stats Paths
-LANE_MEANS = "stats/lanes/lane_means.npy"
-LANE_STDS = "stats/lanes/lane_stds.npy"
-
-AGENT_MEANS = "stats/agents/agent_means.npy"
-AGENT_STDS = "stats/agents/agent_stds.npy"
-
-OBJ_MEANS = "stats/objects/obj_means.npy"
-OBJ_STDS = "stats/objects/obj_stds.npy"
-
-GT_MEANS = "stats/gt/gt_means.npy"
-GT_STDS = "stats/gt/gt_stds.npy"
-
 # Padding params
 OBJ_PAD_LEN = 67
 LANE_PAD_LEN = 145
 
 
+OUT_ENC_DIM = 16
+N_TRAJ = 6
+OUT_DIM = 2 * N_TRAJ * N_FUTURE + N_TRAJ
 
+
+
+# Data params
 track_category_mapping = {
     0 : "TRACK_FRAGMENT",
     1 : "UNSCORED_TARCK",
@@ -90,9 +107,6 @@ map_object_type = {
     'unknown'           : 8,
 }
 
-OUT_ENC_DIM = 16
-N_TRAJ = 6
-OUT_DIM = 2 * N_TRAJ * N_FUTURE + N_TRAJ
 
 
 # Architecture configs

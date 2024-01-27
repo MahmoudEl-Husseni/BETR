@@ -82,8 +82,9 @@ class Objectset(Dataset):
   Dataset for object vectors
   for each pref (scene) has N objects returns N * 60 * 11
   '''
-  def __init__(self, dir, normalize=False, pad_mx=OBJ_PAD_LEN):
-
+  def __init__(self, dir, exp_name, normalize=False, pad_mx=OBJ_PAD_LEN):
+    
+    self.exp_name = exp_name
     self.n_features = 11
     self.n_vec = 60
     self.normalize = normalize
@@ -101,7 +102,7 @@ class Objectset(Dataset):
       self.means = np.concatenate([self.means[:4], [29], self.means[4:]])
       self.stds = np.concatenate([self.stds[:4], [15.3598], self.stds[4:]])
 
-    if EXPERIMENT_NAME=='Argo-pad': 
+    if self.exp_name=='Argo-pad': 
       self.v_pad = [1000, 1000, 1000, 1000, -1000, 1000, 0, 0.0, 0.0, 0.0, 0]
       self.pade_vectors = np.array([self.v_pad for i in range(self.n_vec)])
 
@@ -126,7 +127,7 @@ class Objectset(Dataset):
 
       x = np.vstack((x, data))
 
-      if EXPERIMENT_NAME=='Argo-pad': 
+      if self.exp_name=='Argo-pad': 
         reshaped = x.reshape(-1, 60, 11)
         disp = reshaped[:, :, 5].mean(axis=1).reshape(-1)
         
@@ -154,8 +155,9 @@ class Laneset(Dataset):
   Dataset for lane vectors
   for each pref (scene) has N lanes returns N * 35 * 9
   '''
-  def __init__(self, dir, normalize=False, pad_mx=LANE_PAD_LEN):
+  def __init__(self, dir, exp_name, normalize=False, pad_mx=LANE_PAD_LEN):
 
+    self.exp_name = exp_name
     self.normalize = normalize
     self.n_features = 9
     self.n_vec = 35
@@ -171,7 +173,7 @@ class Laneset(Dataset):
       self.means = np.load(LANE_MEANS)
       self.stds = np.load(LANE_STDS)
 
-    if EXPERIMENT_NAME=='Argo-pad':
+    if self.exp_name=='Argo-pad':
       self.v_pad = [1000, 1000, 1000, 1000, 1000, 1000, 0, 0, 0]
       self.pade_vectors = np.array([self.v_pad for i in range(self.n_vec)])
 
@@ -194,7 +196,7 @@ class Laneset(Dataset):
 
       x = np.vstack((x, data))
 
-      if EXPERIMENT_NAME=='Argo-pad':
+      if self.exp_name=='Argo-pad':
         reshaped = x.reshape(-1, 35, 9)
         disp = np.linalg.norm(reshaped[:, :, :2], axis=-1).mean(axis=-1)
         disp_mp = dict(zip(disp, range(len(disp))))
@@ -220,13 +222,14 @@ class Vectorset(Dataset):
   Vectorset
   Dataset for agent, object, lane vectors, ground truth
   '''
-  def __init__(self, dir, normalize=False):
+  def __init__(self, dir, exp_name, normalize=False):
     self.main_dir = dir
     self.normalize = normalize
+    self.exp_name = exp_name
 
     self.agent_set = Agentset(self.main_dir, self.normalize)
-    self.obj_set = Objectset(self.main_dir, self.normalize)
-    self.lane_set = Laneset(self.main_dir, self.normalize)
+    self.obj_set = Objectset(self.main_dir, self.exp_name, self.normalize)
+    self.lane_set = Laneset(self.main_dir, self.exp_name, self.normalize)
     
     self.prefs = self.agent_set.prefs
 
@@ -298,3 +301,20 @@ def custom_collate(batch: List[Tuple[torch.Tensor, np.ndarray, np.ndarray, torch
         n_lanes.append(lane_sm)
 
     return agent.to(DEVICE), obj.to(DEVICE), lane.to(DEVICE), gt.to(DEVICE), n_objs, n_lanes
+
+
+class SingleScene(Vectorset):
+  def __init__(self, dir, exp_name, normalize=False): 
+    super().__init__(dir, exp_name, normalize)
+
+  def __getitem__(self, scene_name): 
+    if isinstance(scene_name, int): 
+      prefs = [scene_name]
+    else : 
+      prefs = scene_name
+
+    agent_vectors, gt = self.agent_set[prefs]
+    obj_vectors = self.obj_set[prefs]
+    lane_vectors = self.lane_set[prefs]
+
+    return agent_vectors, obj_vectors, lane_vectors, gt

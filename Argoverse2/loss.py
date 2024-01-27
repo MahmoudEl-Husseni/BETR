@@ -54,7 +54,7 @@ class pytorch_neg_multi_log_likelihood_batch(nn.Module):
                 Tensor: negative log-likelihood for this example, a single float number
             """
 
-            # convert to (batch_size, num_modes, future_len, num_coords)
+            # convert to (batch_size bs, num_modes k, future_len T, num_coords 2)
             y = torch.unsqueeze(y, 1)  # add modes
             
 
@@ -97,14 +97,14 @@ def final_displacement_error(y, y_pred, conf):
     """
     error_ls = []
     for i in range(y_pred.shape[1]):
-        error = ((y[-1] - y_pred[:, i][-1])) ** 2
+        error = ((y[:, -1] - y_pred[:, i, -1])) ** 2
         error = torch.sum(torch.Tensor(error), dim=-1)  # reduce coords and use availability
         error = torch.sqrt(error)
         error_ls.append(torch.mean(error).item())
     return error_ls
 
 
-def missrate(y_true, y_pred, heading, comb='avg') -> int:
+def missrate(y_true, y_pred, heading, T, comb='avg') -> int:
     """
     Compute the miss rate between the ground truth and the prediction.
 
@@ -116,16 +116,16 @@ def missrate(y_true, y_pred, heading, comb='avg') -> int:
     """
     R : np.ndarray = np.array([[np.cos(heading), -np.sin(heading)], [np.sin(heading), np.cos(heading)]])
     if comb == 'avg':
-      MR = np.zeros((len(y_pred), 80))
+      MR = np.zeros((len(y_pred), T))
     elif comb=='min': 
-      MR = np.ones((len(y_pred), 80))
+      MR = np.ones((len(y_pred), T))
     for i in range(y_pred.shape[1]):
         err = y_true - y_pred[:, i]
 
-        err = np.matmul(err, R) # shape -> bs * 80 * 2
+        err = np.matmul(err, R) # shape -> bs * T * 2
         lat = [1, 1.8, 3]
         lon = [2, 3.6, 6]
-        samples = [slice(30), slice(30, 50), slice(50, 80)]
+        samples = [slice(30), slice(30, 50), slice(50, T)]
 
         for j in range(len(lat)):
             if comb=='min': 

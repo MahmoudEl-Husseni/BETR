@@ -95,7 +95,7 @@ def train_from_last_ckpt(model,
     # model = nn.DataParallel(model)
     
     # Get min loss 
-    best_logs_file = os.path.join(OUT_DIR, "best_logs.csv")
+    best_logs_file = os.path.join(OUT_DIR(model.exp_name), "best_logs.csv")
     best_loss = get_min_loss(best_logs_file)
     
 
@@ -191,7 +191,7 @@ def train_from_last_ckpt(model,
 
         # ====================================================================================================
         # write logs to csv file
-        with open(os.path.join(OUT_DIR, "logs.csv"), "a") as f:
+        with open(os.path.join(OUT_DIR(model.exp_name), "logs.csv"), "a") as f:
             line = f"{epoch+1}"
 
             for result in __results.values():
@@ -250,14 +250,21 @@ def train_from_last_ckpt(model,
                 save_scheduler=True
             )
 
-            with open(os.path.join(OUT_DIR, "best_logs.csv"), "a") as f:
+            with open(os.path.join(OUT_DIR(model.exp_name), "best_logs.csv"), "a") as f:
                 f.write(line)
 
 
-
+import argparse
+def argparser(): 
+    parser = argparse.ArgumentParser(description='VectorNet')
+    parser.add_argument('--experiment_name', type=str, default='Argo-1')
+    args = parser.parse_args()
+    return args
 
 if __name__=='__main__': 
-    if EXPERIMENT_NAME=='Argo-pad' : 
+    args = argparser()
+    EXPERIMENT_NAME = args.experiment_name
+    if EXPERIMENT_NAME=='Argo-1' : 
         trainset = Vectorset(TRAIN_DIR, normalize=False)
         valset = Vectorset(VAL_DIR, normalize=False)
     else :
