@@ -85,11 +85,6 @@ fi
 
 git config --global --add safe.directory /main/VectorNet
 # echo ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
-echo 123456 | sudo -S bash ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
+bash ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
+
 echo "Inferenece status code: " $?
-
-
-
-
-
-

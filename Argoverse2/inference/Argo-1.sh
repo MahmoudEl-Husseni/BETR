@@ -6,7 +6,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-1' ]
 then 
 	echo Current Branch:  $branch_name
-	echo 123456 | sudo -S git switch argo-1
+	git switch argo-1
 fi 
 git branch
 

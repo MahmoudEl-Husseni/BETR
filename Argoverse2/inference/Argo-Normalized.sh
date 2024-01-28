@@ -6,7 +6,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-normalized' ]
 then 
 	echo Current Branch:  $branch_name
-	echo 123456 | sudo -S git switch argo-normalized
+	git switch argo-normalized
 fi 
 git branch
 

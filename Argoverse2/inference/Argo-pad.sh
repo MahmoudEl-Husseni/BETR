@@ -8,7 +8,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-pad' ]
 then 
 	echo Current Branch:  $branch_name
-	echo 123456 | sudo -S git switch argo-pad
+	git switch argo-pad
 fi 
 git branch
 # Parse input args
