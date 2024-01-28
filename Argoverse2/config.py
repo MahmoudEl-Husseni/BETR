@@ -21,9 +21,16 @@ def OUT_DIR(EXPERIMENT_NAME):
         return os.path.join(MAIN_DIR, f"out/{EXPERIMENT_NAME}_out") 
     else : 
         raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
-
-TB_DIR = os.path.join(OUT_DIR, "tb")
-CKPT_DIR = os.path.join(OUT_DIR, "ckpt")
+def TB_DIR(EXPERIMENT_NAME): 
+    if EXPERIMENT_NAME in SUPPORTED_EXPERIMENTS: 
+        return os.path.join(OUT_DIR(EXPERIMENT_NAME), "tb") 
+    else : 
+        raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
+def CKPT_DIR(EXPERIMENT_NAME):
+    if EXPERIMENT_NAME in SUPPORTED_EXPERIMENTS: 
+        return os.path.join(OUT_DIR(EXPERIMENT_NAME), "ckpt") 
+    else : 
+        raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
 
 # Stats Paths
 LANE_MEANS = "stats/lanes/lane_means.npy"
@@ -55,7 +62,7 @@ EPOCHS = 100
 LOG_STEP = 10
 STEPS_PER_EPOCH = 71
 
-DEVICE = 'cuda'
+DEVICE = 'cpu'
 CKPT_EPOCH = 10
 
 TRAIN_BS = 64

@@ -251,7 +251,7 @@ def custom_collate(batch: List[Tuple[torch.Tensor, np.ndarray, np.ndarray, torch
         lane = torch.cat([lane, torch.Tensor(b[2]).view(-1, 35, lane_feat)])
         gt = torch.cat([gt, torch.Tensor(b[3])])
         obj_sm += b[1].shape[0]
-        lane_sm += b[2].shape[0]
+        lane_sm += b[2].shape[0] 
         n_objs.append(obj_sm)
         n_lanes.append(lane_sm)
 

@@ -173,9 +173,9 @@ class VectorNet(nn.Module):
     self.exp_name = exp_name
 
     if self.exp_name=='Argo-GNN-GNN':
-      self.local_encoder = LocalVectorNet(graph_encoder=True)
+      self.local_encoder = LocalVectorNet(self.exp_name, graph_encoder=True)
     else:
-      self.local_encoder = LocalVectorNet()
+      self.local_encoder = LocalVectorNet(self.exp_name)
     
     self.local_encoder.to(DEVICE)
     
