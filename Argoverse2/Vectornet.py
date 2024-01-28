@@ -122,9 +122,10 @@ class GlobalEncoder(nn.Module):
 
 
 class VectorNet(nn.Module):
-  def __init__(self):
+  def __init__(self, exp_name):
     super(VectorNet, self).__init__()
-
+    self.exp_name = exp_name
+    
     self.local_encoder = LocalVectorNet()
     self.local_encoder.to(DEVICE)
     
