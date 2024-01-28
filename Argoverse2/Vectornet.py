@@ -41,9 +41,10 @@ class VectorEncoder(nn.Module):
 
 
 class LocalVectorNet(nn.Module):
-  def __init__(self, graph_encoder=False):
+  def __init__(self, exp_name, graph_encoder=False):
     super(LocalVectorNet, self).__init__()
     self.graph_encoder = graph_encoder
+    self.exp_name = exp_name
 
     if graph_encoder:
       self.agent_encoder = GraphVectorEncoder(**GRAPH_AGENT_ENC)
@@ -66,7 +67,7 @@ class LocalVectorNet(nn.Module):
     encoded_obj_vectors = self.obj_encoder(obj_vectors)
     encoded_lane_vectors = self.lane_encoder(lane_vectors)
 
-    if EXPERIMENT_NAME=='Argo-GNN-GNN':
+    if self.exp_name=='Argo-GNN-GNN':
       return agent_encoded, encoded_obj_vectors, encoded_lane_vectors
     
     agent_encoded = torch.mean(agent_encoded, axis=1)
@@ -105,7 +106,7 @@ class LocalVectorNet(nn.Module):
 
   def to_graph_data(self, batch):
     agent_data, obj_data, lane_data, gt, n_objs, n_lanes = batch
-    if EXPERIMENT_NAME=='Argo-GNN-GNN':
+    if self.exp_name=='Argo-GNN-GNN':
       out = self.gnn_gnn_encoder(batch)
     else : 
       out = self(batch[:-3])
@@ -167,18 +168,19 @@ class GlobalEncoder(nn.Module):
 
 
 class VectorNet(nn.Module):
-  def __init__(self):
+  def __init__(self, exp_name):
     super(VectorNet, self).__init__()
+    self.exp_name = exp_name
 
-    if EXPERIMENT_NAME=='Argo-GNN-GNN':
-      self.local_encoder = LocalVectorNet(graph_encoder=True)
+    if self.exp_name=='Argo-GNN-GNN':
+      self.local_encoder = LocalVectorNet(self.exp_name, graph_encoder=True)
     else:
-      self.local_encoder = LocalVectorNet()
+      self.local_encoder = LocalVectorNet(self.exp_name)
     
     self.local_encoder.to(DEVICE)
     
     
-    if EXPERIMENT_NAME=='Argo-pad': 
+    if self.exp_name=='Argo-pad': 
       self.global_encoder = TransformerEncoderLayer(**GLOBAL_ENC_TRANS)
     else : 
       self.global_encoder = GlobalEncoder(**GLOBAL_ENC)
@@ -195,7 +197,7 @@ class VectorNet(nn.Module):
 
   def forward(self, x):
 
-    if EXPERIMENT_NAME=='Argo-pad': 
+    if self.exp_name=='Argo-pad': 
       encoded_vectors = self.local_encoder.to_trans(x)
       encoded_vectors, global_attention_weights = self.global_encoder(encoded_vectors)
       latent_vector = encoded_vectors.mean(axis=1)
