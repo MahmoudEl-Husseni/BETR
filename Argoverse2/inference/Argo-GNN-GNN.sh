@@ -6,6 +6,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-gnn-gnn' ]
 then 
 	echo Current Branch:  $branch_name
+    git restore *
 	git switch argo-gnn-gnn
 fi 
 git branch
