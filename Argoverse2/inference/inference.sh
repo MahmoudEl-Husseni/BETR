@@ -1,8 +1,5 @@
 #!/bin/bash
 
-cd VectorNet/Argoverse2/inference
-
-
 # : <<'case_statement'
 shopt -s nocasematch
 case "$1" in
@@ -28,7 +25,6 @@ case "$1" in
 esac
 shopt -u nocasematch
 # case_statement
-
 
 
 
@@ -67,14 +63,11 @@ select choice in "${options[@]}"; do
 done
 select_statement
 
-
 echo Selected Experiment: $exp_name
-
-if [ $2 = 't' ]; 
-then
-shift 2
-while [[ $# -gt 0 ]]; 
-do
+if [ $2 == 't' ]
+then 
+  shift 2
+  while [[ $# -gt 0 ]]; do
     case "$1" in
         -s|--scene_name)
             export scene_name=$2
@@ -106,7 +99,6 @@ read -p "Best models path: " best_models_path
 read -p "Save path: " save_path
 fi 
 
-
 if [ -z $data_path ]
 then 
 data_path=$(readlink -f ../../../Argoverse\ Dataset/train_interm)
@@ -123,9 +115,9 @@ save_path=`readlink -f ../../../Argoverse\ Dataset/out/`
 fi
 
 
-git config --global --add safe.directory /main/VectorNet
-# echo ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
 
+# echo ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
+cd VectorNet/Argoverse2/inference
 
 bash ${exp_name}.sh -s $scene_name -d "$data_path" -best "$best_models_path" -sv "$save_path"
 

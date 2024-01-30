@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/main/VectorNet/Argoverse2')
+sys.path.append('/content/VectorNet/Argoverse2')
 
 import numpy as np
 

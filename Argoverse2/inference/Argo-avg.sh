@@ -6,6 +6,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-avg' ]
 then 
 	echo Current Branch:  $branch_name
+  git restore *
 	git switch argo-avg
 fi 
 branch_name=$(git branch --show-current)

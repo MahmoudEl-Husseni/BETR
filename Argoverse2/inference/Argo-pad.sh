@@ -8,6 +8,7 @@ branch_name=$(git branch --show-current)
 if [ $branch_name != 'argo-pad' ]
 then 
 	echo Current Branch:  $branch_name
+    git restore *
 	git switch argo-pad
 fi 
 git branch
