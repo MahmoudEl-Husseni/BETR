@@ -12,6 +12,7 @@ SUPPORTED_EXPERIMENTS = [
 
 # Data Paths
 MAIN_DIR = "/main/Argoverse Dataset/"
+STATS_DIR = "/content/stats"
 TRAIN_DIR = os.path.join(MAIN_DIR, "train_interm")
 VAL_DIR = os.path.join(MAIN_DIR, "val_interm")
 TEST_DIR = os.path.join(MAIN_DIR, "test")
@@ -33,17 +34,17 @@ def CKPT_DIR(EXPERIMENT_NAME):
         raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
 
 # Stats Paths
-LANE_MEANS = "stats/lanes/lane_means.npy"
-LANE_STDS = "stats/lanes/lane_stds.npy"
+LANE_MEANS = os.path.join(STATS_DIR, "lanes/lane_means.npy")
+LANE_STDS = os.path.join(STATS_DIR, "lanes/lane_stds.npy")
 
-AGENT_MEANS = "stats/agents/agent_means.npy"
-AGENT_STDS = "stats/agents/agent_stds.npy"
+AGENT_MEANS = os.path.join(STATS_DIR, "agents/agent_means.npy")
+AGENT_STDS = os.path.join(STATS_DIR, "agents/agent_stds.npy")
 
-OBJ_MEANS = "stats/objects/obj_means.npy"
-OBJ_STDS = "stats/objects/obj_stds.npy"
+OBJ_MEANS = os.path.join(STATS_DIR, "objects/obj_means.npy")
+OBJ_STDS = os.path.join(STATS_DIR, "objects/obj_stds.npy")
 
-GT_MEANS = "stats/gt/gt_means.npy"
-GT_STDS = "stats/gt/gt_stds.npy"
+GT_MEANS = os.path.join(STATS_DIR, "gt/gt_means.npy")
+GT_STDS = os.path.join(STATS_DIR, "gt/gt_stds.npy")
 
 
 # Configs
@@ -62,7 +63,7 @@ EPOCHS = 100
 LOG_STEP = 10
 STEPS_PER_EPOCH = 71
 
-DEVICE = 'cuda'
+DEVICE = 'cpu'
 CKPT_EPOCH = 10
 
 TRAIN_BS = 64
