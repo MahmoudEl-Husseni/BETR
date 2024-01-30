@@ -2,10 +2,10 @@
 
 cd ..
 branch_name=$(git branch --show-current)
-
 if [ $branch_name != 'argo-1' ]
 then 
 	echo Current Branch:  $branch_name
+  git restore *
 	git switch argo-1
 fi 
 git branch
@@ -78,6 +78,5 @@ export save_path=${save_path}/preds
 	fi
 fi 
 export save_path=$save_path
-
 
 python3 inference/infere.py
