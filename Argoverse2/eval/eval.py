@@ -20,8 +20,8 @@ def normalize(y, mean, std):
 
 def eval_dataloader(model, dataloader, metrics): 
 
-    mean = torch.Tensor(np.load('VectorNet/Argoverse2/stats/gt/gt_means.npy'))
-    std = torch.Tensor(np.load('VectorNet/Argoverse2/stats/gt/gt_stds.npy'))
+    mean = torch.Tensor(np.load(GT_MEANS))
+    std = torch.Tensor(np.load(GT_STDS))
     for batch in tqdm(iter(dataloader)):
     
         out = model(batch)
@@ -59,11 +59,12 @@ if __name__ == '__main__':
     DATA_PATH = args.data_path
 
     if EXPERIMENT_NAME=='Argo-1' : 
-        dataset = Vectorset(DATA_PATH, normalize=False)
+        dataset = Vectorset(DATA_PATH, EXPERIMENT_NAME, normalize=False)
     else :
-        dataset = Vectorset(DATA_PATH, normalize=True)
+        dataset = Vectorset(DATA_PATH, EXPERIMENT_NAME, normalize=True)
 
-    model = VectorNet()
+    model = VectorNet(EXPERIMENT_NAME)
+    model.eval()
     model.exp_name = EXPERIMENT_NAME
     model_ckpt_path = args.best_models + f'/{EXPERIMENT_NAME.lower()}-best_model.pth'
 
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     model_state_dict = checkpoint['state_dict']
     model.load_state_dict(model_state_dict)
 
-    valloader = DataLoader(dataset, batch_size=VAL_BS, shuffle=True, collate_fn=custom_collate)
+    valloader = DataLoader(dataset, batch_size=VAL_BS, shuffle=False, collate_fn=custom_collate)
 
     mde_metric = MinMDE()
     fde_metric = MinFDE()
