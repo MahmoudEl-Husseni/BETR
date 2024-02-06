@@ -157,7 +157,8 @@ class GlobalEncoder(nn.Module):
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
 
-        x = self.transformer_conv(x, edge_index)
+        out = self.transformer_conv(x, edge_index, return_attention_weights=True)
+        x, (edge_index, self.attention_weights) = out
         x = F.relu(x)
 
         x = global_mean_pool(x, data.batch)

@@ -10,7 +10,7 @@ from metrics.mr import *
 
 import argparse
 from tqdm import tqdm
-
+import time
 
 
 
@@ -20,11 +20,16 @@ def normalize(y, mean, std):
 
 def eval_dataloader(model, dataloader, metrics): 
 
-    mean = torch.Tensor(np.load(GT_MEANS))
-    std = torch.Tensor(np.load(GT_STDS))
+    mean = torch.Tensor(np.load('VectorNet/Argoverse2/stats/gt/gt_means.npy'))
+    std = torch.Tensor(np.load('VectorNet/Argoverse2/stats/gt/gt_stds.npy'))
+    model.eval()
+    Ts = []
     for batch in tqdm(iter(dataloader)):
     
+        start_time = time.time()
         out = model(batch)
+        t = time.time() - start_time
+        Ts.append(t)
         pred, confidences = out[:, :-N_TRAJ], out[:, -N_TRAJ:]
         pred = pred.view(-1, N_TRAJ, N_FUTURE, 2)
         target = batch[3]
@@ -32,12 +37,12 @@ def eval_dataloader(model, dataloader, metrics):
           target = normalize(target, mean, std)
           pred = normalize(pred, mean, std)
 
-        
+
         for metric in metrics : 
             metric.update(pred, target)
         
 
-    return [metric.compute() for metric in metrics]
+    return [metric.compute() for metric in metrics], Ts
 
 
 def argparser(): 
@@ -64,7 +69,6 @@ if __name__ == '__main__':
         dataset = Vectorset(DATA_PATH, EXPERIMENT_NAME, normalize=True)
 
     model = VectorNet(EXPERIMENT_NAME)
-    model.eval()
     model.exp_name = EXPERIMENT_NAME
     model_ckpt_path = args.best_models + f'/{EXPERIMENT_NAME.lower()}-best_model.pth'
 
@@ -74,15 +78,16 @@ if __name__ == '__main__':
     model_state_dict = checkpoint['state_dict']
     model.load_state_dict(model_state_dict)
 
-    valloader = DataLoader(dataset, batch_size=VAL_BS, shuffle=False, collate_fn=custom_collate)
+    valloader = DataLoader(dataset[:10000], batch_size=VAL_BS, shuffle=True, collate_fn=custom_collate)
 
     mde_metric = MinMDE()
     fde_metric = MinFDE()
     mr_metric = MissRate()
 
-    metrics = [mde_metric, fde_metric, mr_metric]
+    # metrics = [mde_metric, fde_metric, mr_metric]
 
-    mde, fde, mr = eval_dataloader(model, valloader, metrics)
+    [mde, fde, mr], Ts = eval_dataloader(model, valloader, metrics)
+    np.save(f'{EXPERIMENT_NAE}_T.npy', np.array(Ts))
     mr = mr.squeeze()
     
     with open(args.results_path, 'a') as f:

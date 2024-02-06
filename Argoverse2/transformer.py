@@ -50,26 +50,31 @@ class MultiheadSelfAttention(nn.Module):
         self.value = nn.Linear(input_dim, input_dim, device=DEVICE)
         self.fc_out = nn.Linear(input_dim, input_dim, device=DEVICE)
 
-    def forward(self, query, key, value):
+    def forward (self, query : torch.Tensor, key : torch.Tensor, value : torch.Tensor) -> torch.Tensor:
+        '''
+        query shape     -> [bs, n_tokens, d_in]
+        key shape       -> [bs, n_tokens, d_in]
+        value shape     -> [bs, n_tokens, d_in]
+        '''
         batch_size = key.shape[0]
-        query = self.query(query)
-        key = self.key(key)
-        value = self.value(value)
+        query = self.query(query)   # [bs, n_tokens, d_in] -> [bs, n_tokens, d_in]
+        key = self.key(key)         # [bs, n_tokens, d_in] -> [bs, n_tokens, d_in]
+        value = self.value(value)   # [bs, n_tokens, d_in] -> [bs, n_tokens, d_in]
 
         # Split the queries, keys, and values into multiple heads
-        query = query.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        key = key.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        value = value.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        query = query.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)   # [bs, n_tokens, d_in] -> [bs, n_heads, n_tokens, d_head]
+        key = key.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)       # [bs, n_tokens, d_in] -> [bs, n_heads, n_tokens, d_head]
+        value = value.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)   # [bs, n_tokens, d_in] -> [bs, n_heads, n_tokens, d_head]
 
         # Scaled dot-product attention
-        scaled_attention = torch.matmul(query, key.permute(0, 1, 3, 2)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))
+        scaled_attention = torch.matmul(query, key.permute(0, 1, 3, 2)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32)) # [bs, n_heads, n_tokens, n_tokens]
 
-        attention_weights = F.softmax(scaled_attention, dim=-1)
-        output = torch.matmul(attention_weights, value)
+        attention_weights = F.softmax(scaled_attention, dim=-1) # [bs, n_heads, n_tokens, n_tokens]
+        output = torch.matmul(attention_weights, value)         # [bs, n_heads, n_tokens, d_head]
 
         # Concatenate and linearly project the output
-        output = output.permute(0, 2, 1, 3).contiguous().view(batch_size, -1, self.input_dim)
-        output = self.fc_out(output)
+        output = output.permute(0, 2, 1, 3).contiguous().view(batch_size, -1, self.input_dim) # [bs, n_tokens, d_in]
+        output = self.fc_out(output)                                                          # [bs, n_tokens, d_in] -> [bs, n_tokens, d_in]
 
         return output, attention_weights
 
