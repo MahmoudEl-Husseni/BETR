@@ -1,7 +1,7 @@
 import os 
 from colorama import Fore, Back, Style
 
-# EXPERIMENT_NAME = "Argo-1"
+EXPERIMENT_NAME = "Argo-1"
 SUPPORTED_EXPERIMENTS = [
     "Argo-1", 
     "Argo-Normalied", 
@@ -11,15 +11,14 @@ SUPPORTED_EXPERIMENTS = [
 ]
 
 # Data Paths
-MAIN_DIR = "/main/Argoverse Dataset/"
-STATS_DIR = "/content/stats"
-TRAIN_DIR = os.path.join(MAIN_DIR, "train_interm")
-VAL_DIR = os.path.join(MAIN_DIR, "val_interm")
-TEST_DIR = os.path.join(MAIN_DIR, "test")
+MAIN_DIR = "/main/Argoverse Dataset"
+TRAIN_DIR = os.path.join(MAIN_DIR, "vectorize/train_interm")
+VAL_DIR = os.path.join(MAIN_DIR, "vectorize/val_interm")
+TEST_DIR = os.path.join(MAIN_DIR, "vectorize/test")
 
 def OUT_DIR(EXPERIMENT_NAME): 
     if EXPERIMENT_NAME in SUPPORTED_EXPERIMENTS: 
-        return os.path.join(MAIN_DIR, f"out/{EXPERIMENT_NAME}_out") 
+        return os.path.join(MAIN_DIR, f"out2/{EXPERIMENT_NAME}_out") 
     else : 
         raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
 def TB_DIR(EXPERIMENT_NAME): 
@@ -34,17 +33,17 @@ def CKPT_DIR(EXPERIMENT_NAME):
         raise Exception(f"Experiment {EXPERIMENT_NAME} not supported")
 
 # Stats Paths
-LANE_MEANS = os.path.join(STATS_DIR, "lanes/lane_means.npy")
-LANE_STDS = os.path.join(STATS_DIR, "lanes/lane_stds.npy")
+LANE_MEANS = MAIN_DIR + "/stats/lanes/lane_means.npy"
+LANE_STDS = MAIN_DIR + "/stats/lanes/lane_stds.npy"
 
-AGENT_MEANS = os.path.join(STATS_DIR, "agents/agent_means.npy")
-AGENT_STDS = os.path.join(STATS_DIR, "agents/agent_stds.npy")
+AGENT_MEANS = MAIN_DIR + "/stats/agents/agent_means.npy"
+AGENT_STDS = MAIN_DIR + "/stats/agents/agent_stds.npy"
 
-OBJ_MEANS = os.path.join(STATS_DIR, "objects/obj_means.npy")
-OBJ_STDS = os.path.join(STATS_DIR, "objects/obj_stds.npy")
+OBJ_MEANS = MAIN_DIR + "/stats/objects/obj_means.npy"
+OBJ_STDS = MAIN_DIR + "/stats/objects/obj_stds.npy"
 
-GT_MEANS = os.path.join(STATS_DIR, "gt/gt_means.npy")
-GT_STDS = os.path.join(STATS_DIR, "gt/gt_stds.npy")
+GT_MEANS = MAIN_DIR + "/stats/gt/gt_means.npy"
+GT_STDS = MAIN_DIR + "/stats/gt/gt_stds.npy"
 
 
 # Configs

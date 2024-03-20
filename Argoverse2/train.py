@@ -59,8 +59,36 @@ def train_one_batch(model, batch, optimizer, loss_func, scheduler, metrics):
     gt = batch[3]
     
 
-    l = loss_func(gt, y_pred, confidences)
+    l1 = loss_func(gt, y_pred, confidences)
 
+    # penality on local attention
+
+    # agent encoder attention
+    agent_attn_weights = [model.local_encoder.agent_encoder.attn_weights1, 
+                          model.local_encoder.agent_encoder.attn_weights2, 
+                          model.local_encoder.agent_encoder.attn_weights3]
+    
+    l2 = 0
+    for attn_weight in agent_attn_weights: 
+        l2 += attention_penalty(attn_weight)
+
+    # object encoder attention
+    obj_attn_weights = [model.local_encoder.obj_encoder.attn_weights1, 
+                        model.local_encoder.obj_encoder.attn_weights2, 
+                        model.local_encoder.obj_encoder.attn_weights3]
+    
+    for attn_weight in obj_attn_weights:
+        l2 += attention_penalty(attn_weight)
+
+    # lane encoder attention
+    lane_attn_weights = [model.local_encoder.lane_encoder.attn_weights1, 
+                        model.local_encoder.lane_encoder.attn_weights2, 
+                        model.local_encoder.lane_encoder.attn_weights3]
+    
+    for attn_weight in lane_attn_weights:
+        l2 += attention_penalty(attn_weight)
+
+    l = l1 + 100*l2
     l.backward()
     optimizer.step()
     scheduler.step()
@@ -68,7 +96,6 @@ def train_one_batch(model, batch, optimizer, loss_func, scheduler, metrics):
     __results = eval_metrics(gt, y_pred, confidences, metrics)
 
     return l.item(), __results
-
 
 def train_from_last_ckpt(model, 
                          train_loader,
@@ -95,7 +122,7 @@ def train_from_last_ckpt(model,
     # model = nn.DataParallel(model)
     
     # Get min loss 
-    best_logs_file = os.path.join(OUT_DIR(model.exp_name), "best_logs.csv")
+    best_logs_file = os.path.join(OUT_DIR(EXPERIMENT_NAME), "best_logs.csv")
     best_loss = get_min_loss(best_logs_file)
     
 
@@ -155,7 +182,7 @@ def train_from_last_ckpt(model,
                     writer.add_histogram(f'{name}_grad', param.grad, tb_it_tr)
 
                 tb_it_tr += 1
-
+            # break
 
         # ====================================================================================================
         # Validation loop
@@ -186,7 +213,7 @@ def train_from_last_ckpt(model,
 
                 writer.add_scalar('loss/val', loss, tb_it_v)
                 tb_it_v += 1
-
+                # break
 
 
         # ====================================================================================================
@@ -208,7 +235,7 @@ def train_from_last_ckpt(model,
             t = time.localtime()
             current_time = time.strftime("%Y-%m-%d_%H-%M-%S", t)
             save_checkpoint(
-                CKPT_DIR,
+                CKPT_DIR(EXPERIMENT_NAME),
                 model,
                 optimizer,
                 scheduler,
@@ -221,7 +248,7 @@ def train_from_last_ckpt(model,
 
         # Save checkpoints
         save_checkpoint(
-            CKPT_DIR,
+            CKPT_DIR(EXPERIMENT_NAME),
             model,
             optimizer,
             scheduler,
@@ -239,7 +266,7 @@ def train_from_last_ckpt(model,
             best_loss = loss
             
             save_checkpoint(
-                CKPT_DIR,
+                CKPT_DIR(EXPERIMENT_NAME),
                 model,
                 optimizer,
                 scheduler,
@@ -250,7 +277,7 @@ def train_from_last_ckpt(model,
                 save_scheduler=True
             )
 
-            with open(os.path.join(OUT_DIR(model.exp_name), "best_logs.csv"), "a") as f:
+            with open(os.path.join(OUT_DIR(EXPERIMENT_NAME), "best_logs.csv"), "a") as f:
                 f.write(line)
 
 
@@ -265,13 +292,13 @@ if __name__=='__main__':
     args = argparser()
     EXPERIMENT_NAME = args.experiment_name
     if EXPERIMENT_NAME=='Argo-1' : 
-        trainset = Vectorset(TRAIN_DIR, normalize=False)
-        valset = Vectorset(VAL_DIR, normalize=False)
+        trainset = Vectorset(TRAIN_DIR, EXPERIMENT_NAME, normalize=False)
+        valset = Vectorset(VAL_DIR, EXPERIMENT_NAME, normalize=False)
     else :
-        trainset = Vectorset(TRAIN_DIR, normalize=True)
+        trainset = Vectorset(TRAIN_DIR, EXPERIMENT_NAME, normalize=True)
         valset = Vectorset(VAL_DIR, normalize=True)
     
-    model = VectorNet()
+    model = VectorNet(EXPERIMENT_NAME)
     # model = nn.DataParallel(model)
     
     trainloader = DataLoader(trainset, batch_size=TRAIN_BS, shuffle=True, collate_fn=custom_collate)
@@ -284,7 +311,7 @@ if __name__=='__main__':
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
 
     # tensorboard
-    writer = SummaryWriter(log_dir=TB_DIR)
+    writer = SummaryWriter(log_dir=TB_DIR(EXPERIMENT_NAME))
 
     # metrics
     metrics = {
@@ -301,6 +328,6 @@ if __name__=='__main__':
                             optimizer,
                             loss_func,
                             scheduler,
-                            CKPT_DIR,
+                            CKPT_DIR(EXPERIMENT_NAME),
                             writer,
                             metrics)

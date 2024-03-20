@@ -76,6 +76,25 @@ class pytorch_neg_multi_log_likelihood_batch(nn.Module):
 
             return torch.mean(error)
 
+# Attention Penality
+def attention_penalty(attention_matrix, target_distribution='uniform'):
+    """
+    Calculates the attention penalty based on the deviation from the target distribution.
+    """
+    batch_size, num_heads, seq_length, _ = attention_matrix.size()
+    if target_distribution == 'uniform':
+        # Uniform distribution: each element should have 1/seq_length attention
+        target = torch.full_like(attention_matrix, fill_value=1/seq_length)
+    else:
+        raise ValueError("Unsupported target distribution")
+
+    # Calculate the penalty as the mean squared error between attention and target
+    penalty = torch.mean((attention_matrix - target) ** 2)
+    return penalty
+
+
+
+# Evaluation metrics
 def mean_displacement_error(y, y_pred, conf):
     """
         Compute the final displacement error between the ground truth and the prediction.
