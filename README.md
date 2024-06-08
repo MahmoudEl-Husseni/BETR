@@ -1,5 +1,5 @@
 <a id='1'></a>
-# VectorNet Custom Implementation for Trajectory Prediction
+# BETR Implementation for Trajectory Prediction
 
 In this repository I have Implemented VectorNet: [Encoding HD Maps and Agent Dynamics from Vectorized Representation](https://arxiv.org/abs/2005.04259) paper.The implementation includes modifications to both the vector representation and the model architecture, reflecting my own vision for enhancing the original approach.
 
