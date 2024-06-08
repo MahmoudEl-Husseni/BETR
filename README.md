@@ -1,9 +1,7 @@
 <a id='1'></a>
 # BETR Implementation for Trajectory Prediction
 
-In this repository I have Implemented VectorNet: [Encoding HD Maps and Agent Dynamics from Vectorized Representation](https://arxiv.org/abs/2005.04259) paper.The implementation includes modifications to both the vector representation and the model architecture, reflecting my own vision for enhancing the original approach.
-
-I also have trained this architecture on [**Argoverse2** Dataset](https://www.argoverse.org/av2.html) and tested it using suitable metrics (Mean Displacement Error `MDE`, Final Displacement Error `FDE`, Miss Rate `MR`).
+I have trained this architecture on [**Argoverse2** Dataset](https://www.argoverse.org/av2.html) and tested it using suitable metrics (Mean Displacement Error `MDE`, Final Displacement Error `FDE`, Miss Rate `MR`).
 
 ---
 <a id='2'></a>
